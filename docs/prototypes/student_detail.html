@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>项目详情 - Hydrosim 教学管理门户</title>
+    <style>
+        :root {
+            --primary-6: #165DFF;
+            --primary-1: #E8F3FF;
+            --success-6: #00B42A;
+            --success-1: #E8FFEA;
+            --danger-6: #F53F3F;
+            --text-1: #1D2129;
+            --text-2: #4E5969;
+            --text-3: #86909C;
+            --fill-1: #F7F8FA;
+            --bg-white: #FFFFFF;
+            --border: #E5E6EB;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: var(--fill-1);
+            font-family: 'PingFang SC', sans-serif;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        .header {
+            height: 64px;
+            background: #fff;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            padding: 0 24px;
+            justify-content: space-between;
+        }
+
+        .logo {
+            font-weight: 600;
+            color: var(--text-1);
+            font-size: 16px;
+        }
+
+        /* Detail Header */
+        .page-header {
+            background: #fff;
+            padding: 24px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .breadcrumb {
+            font-size: 13px;
+            margin-bottom: 12px;
+            color: var(--text-3);
+        }
+
+        .breadcrumb a {
+            color: var(--text-2);
+            text-decoration: none;
+        }
+
+        .breadcrumb span {
+            margin: 0 8px;
+        }
+
+        .title-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .main-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--text-1);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .id-badge {
+            font-size: 12px;
+            background: var(--fill-1);
+            color: var(--text-2);
+            padding: 2px 8px;
+            border-radius: 2px;
+            font-family: monospace;
+        }
+
+        .action-group {
+            display: flex;
+            gap: 12px;
+        }
+
+        .btn {
+            height: 32px;
+            padding: 0 16px;
+            border-radius: 2px;
+            border: 1px solid transparent;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: var(--primary-6);
+            color: #fff;
+        }
+
+        .btn-outline {
+            border-color: var(--border);
+            background: #fff;
+            color: var(--text-2);
+        }
+
+        .btn-outline:hover {
+            color: var(--primary-6);
+            border-color: var(--primary-6);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 24px auto;
+            padding: 0 24px;
+            width: 100%;
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 24px;
+        }
+
+        .card {
+            background: #fff;
+            border-radius: 4px;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+            overflow: hidden;
+        }
+
+        .card-head {
+            padding: 16px 24px;
+            border-bottom: 1px solid var(--border);
+            font-size: 16px;
+            font-weight: 500;
+            color: var(--text-1);
+        }
+
+        .card-body {
+            padding: 24px;
+        }
+
+        .desc-list {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+
+        .desc-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .desc-label {
+            font-size: 13px;
+            color: var(--text-3);
+        }
+
+        .desc-value {
+            font-size: 14px;
+            color: var(--text-1);
+            font-weight: 500;
+            word-break: break-all;
+        }
+
+        .link-val {
+            color: var(--primary-6);
+            text-decoration: none;
+        }
+
+        /* Status Widget */
+        .status-center {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            min-height: 200px;
+        }
+
+        .status-ring {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            border: 4px solid var(--success-1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 48px;
+            color: var(--success-6);
+            margin-bottom: 16px;
+        }
+
+        .status-txt {
+            font-weight: 600;
+            font-size: 18px;
+            color: var(--success-6);
+        }
+
+        .status-desc {
+            font-size: 13px;
+            color: var(--text-3);
+            margin-top: 8px;
+            text-align: center;
+        }
+
+        /* Log Table */
+        .log-section {
+            grid-column: 1 / -1;
+            margin-bottom: 40px;
+        }
+
+        .log-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .log-table th {
+            text-align: left;
+            padding: 12px 24px;
+            background: var(--fill-1);
+            color: var(--text-2);
+            font-size: 13px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .log-table td {
+            padding: 12px 24px;
+            border-bottom: 1px solid var(--border);
+            font-size: 13px;
+            color: var(--text-2);
+        }
+
+        .log-status {
+            padding: 2px 8px;
+            border-radius: 2px;
+            font-size: 12px;
+        }
+
+        .success {
+            background: var(--success-1);
+            color: var(--success-6);
+        }
+
+        .error {
+            background: var(--danger-1);
+            color: var(--danger-6);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <div class="logo">Hydrosim Portal</div>
+        <div style="font-size: 14px; color: var(--text-2);">李老师</div>
+    </div>
+
+    <div class="page-header">
+        <div class="breadcrumb">
+            <a href="student_list.html">项目列表</a> <span>/</span> 详情
+        </div>
+        <div class="title-row">
+            <h1 class="main-title">张三的毕业设计 <span class="id-badge">ID: 2025001</span></h1>
+            <div class="action-group">
+                <button class="btn btn-outline">编辑配置</button>
+                <button class="btn btn-primary">部署新版本</button>
+                <button class="btn btn-outline" onclick="window.open('#', '_blank')">访问网站</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Config Info -->
+        <div class="card">
+            <div class="card-head">配置信息 (Configuration)</div>
+            <div class="card-body">
+                <div class="desc-list">
+                    <div class="desc-item">
+                        <span class="desc-label">学生姓名</span>
+                        <span class="desc-value">张三 (Zhang San)</span>
+                    </div>
+                    <div class="desc-item">
+                        <span class="desc-label">项目类型</span>
+                        <span class="desc-value">毕业设计 (Graduation Project)</span>
+                    </div>
+                    <div class="desc-item">
+                        <span class="desc-label">Git 仓库地址</span>
+                        <span class="desc-value"><a href="#"
+                                class="link-val">https://github.com/hydrosim/student-2025001.git</a></span>
+                    </div>
+                    <div class="desc-item">
+                        <span class="desc-label">分配域名</span>
+                        <span class="desc-value">zhangsan.hydrosim.cloud</span>
+                    </div>
+                    <div class="desc-item">
+                        <span class="desc-label">当前镜像 Tag</span>
+                        <span class="desc-value"
+                            style="font-family: monospace; background: #f2f3f5; padding: 2px 6px; border-radius: 2px;">nginx:alpine</span>
+                    </div>
+                    <div class="desc-item">
+                        <span class="desc-label">容器端口</span>
+                        <span class="desc-value">80 (http)</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Status -->
+        <div class="card">
+            <div class="card-head">当前状态 (Health)</div>
+            <div class="card-body">
+                <div class="status-center">
+                    <div class="status-ring">✔</div>
+                    <div class="status-txt">RUNNING</div>
+                    <div class="status-desc">服务运行正常<br>已持续运行 4 天 12 小时</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- History -->
+        <div class="card log-section">
+            <div class="card-head">部署历史 (History)</div>
+            <table class="log-table">
+                <thead>
+                    <tr>
+                        <th>部署时间</th>
+                        <th>版本 Tag</th>
+                        <th>耗时</th>
+                        <th>触发人</th>
+                        <th>状态</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>2024-12-24 10:30:45</td>
+                        <td style="font-family: monospace;">nginx:alpine</td>
+                        <td>45s</td>
+                        <td>李老师</td>
+                        <td><span class="log-status success">成功</span></td>
+                        <td><a href="#" class="link-val">查看日志</a></td>
+                    </tr>
+                    <tr>
+                        <td>2024-12-23 15:45:12</td>
+                        <td style="font-family: monospace;">nginx:latest</td>
+                        <td>12s</td>
+                        <td>系统自动</td>
+                        <td><span class="log-status error">失败</span></td>
+                        <td><a href="#" class="link-val">查看日志</a></td>
+                    </tr>
+                    <tr>
+                        <td>2024-12-20 09:12:00</td>
+                        <td style="font-family: monospace;">nginx:v1.0</td>
+                        <td>50s</td>
+                        <td>张三</td>
+                        <td><span class="log-status success">成功</span></td>
+                        <td><a href="#" class="link-val">查看日志</a></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</body>
+
+</html>

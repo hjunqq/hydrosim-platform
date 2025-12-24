@@ -1,0 +1,86 @@
+version: "3.9"
+
+services:
+  portal-backend:
+    build: ./backend
+    container_name: hydrosim-backend
+    environment:
+      - PORT=8000
+      - PORTAL_ENV=development
+      - DATABASE_URL=postgresql://portal:portal@postgres:5432/portal
+      - GITEA_URL=http://gitea:3000
+      - GITEA_TOKEN=${GITEA_TOKEN:-changeme}
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:-admin}
+      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY:-admin123}
+      - MINIO_BUCKET=hydrosim-platform
+      - K8S_NAMESPACE=hydrosim
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-your-secret-key-change-in-production}
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+    depends_on:
+      - postgres
+      - minio
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  portal-frontend:
+    build: ./frontend
+    container_name: hydrosim-frontend
+    environment:
+      - VITE_API_BASE_URL=http://localhost:8000
+    ports:
+      - "8080:80"
+    depends_on:
+      - portal-backend
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: hydrosim-postgres
+    environment:
+      - POSTGRES_USER=portal
+      - POSTGRES_PASSWORD=portal
+      - POSTGRES_DB=portal
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./db/migrations:/docker-entrypoint-initdb.d
+
+  minio:
+    image: minio/minio:latest
+    container_name: hydrosim-minio
+    command: server /data --console-address ":9001"
+    environment:
+      - MINIO_ROOT_USER=${MINIO_ACCESS_KEY:-admin}
+      - MINIO_ROOT_PASSWORD=${MINIO_SECRET_KEY:-admin123}
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio-data:/data
+
+  gitea:
+    image: gitea/gitea:1.21
+    container_name: hydrosim-gitea
+    environment:
+      - USER_UID=1000
+      - USER_GID=1000
+      - GITEA__database__DB_TYPE=postgres
+      - GITEA__database__HOST=postgres:5432
+      - GITEA__database__NAME=gitea
+      - GITEA__database__USER=portal
+      - GITEA__database__PASSWD=portal
+    ports:
+      - "3000:3000"
+      - "2222:22"
+    volumes:
+      - gitea-data:/data
+    depends_on:
+      - postgres
+
+volumes:
+  postgres-data:
+  minio-data:
+  gitea-data:

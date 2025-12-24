@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>工作台 - Hydrosim 教学管理门户</title>
+    <style>
+        :root {
+            /* Palette: Arco Design Blue */
+            --primary-6: #165DFF;
+            --primary-1: #E8F3FF;
+
+            --success-6: #00B42A;
+            --success-1: #E8FFEA;
+
+            --warning-6: #FF7D00;
+            --warning-1: #FFF7E8;
+
+            --danger-6: #F53F3F;
+            --danger-1: #FFECE8;
+
+            --text-1: #1D2129;
+            /* Primary Text */
+            --text-2: #4E5969;
+            /* Regular Text */
+            --text-3: #86909C;
+            /* Secondary/Icon */
+            --text-4: #C9CDD4;
+            /* Disabled */
+
+            --fill-1: #F7F8FA;
+            /* Page Bg */
+            --fill-2: #F2F3F5;
+            --bg-white: #FFFFFF;
+
+            --border: #E5E6EB;
+        }
+
+        /* Base Reset */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: var(--fill-1);
+            color: var(--text-2);
+            font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            height: 100vh;
+            display: flex;
+        }
+
+        /* Sidebar Styles */
+        .sidebar {
+            width: 240px;
+            background: #fff;
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+            z-index: 10;
+        }
+
+        .logo-area {
+            height: 64px;
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .logo-icon {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, #165DFF 0%, #00369E 100%);
+            border-radius: 8px;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 18px;
+            margin-right: 12px;
+        }
+
+        .logo-text {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-1);
+            letter-spacing: 0.5px;
+        }
+
+        .nav-menu {
+            padding: 16px 8px;
+            flex: 1;
+        }
+
+        .nav-group-title {
+            padding: 8px 12px;
+            font-size: 12px;
+            color: var(--text-3);
+            margin-top: 8px;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            height: 40px;
+            padding: 0 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: var(--text-2);
+            font-size: 14px;
+            margin-bottom: 4px;
+            text-decoration: none;
+        }
+
+        .nav-item:hover {
+            background-color: var(--fill-2);
+        }
+
+        .nav-item.active {
+            background-color: var(--primary-1);
+            color: var(--primary-6);
+            font-weight: 500;
+        }
+
+        .nav-icon {
+            margin-right: 12px;
+            font-size: 16px;
+            width: 16px;
+            text-align: center;
+        }
+
+        .user-profile {
+            padding: 16px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .avatar {
+            width: 36px;
+            height: 36px;
+            background: #165DFF;
+            border-radius: 50%;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+        }
+
+        .user-info {
+            flex: 1;
+        }
+
+        .user-name {
+            font-size: 14px;
+            color: var(--text-1);
+            font-weight: 500;
+        }
+
+        .user-role {
+            font-size: 12px;
+            color: var(--text-3);
+        }
+
+        /* Main Content */
+        .workspace {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .top-bar {
+            height: 64px;
+            background: #fff;
+            border-bottom: 1px solid var(--border);
+            padding: 0 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .page-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--text-1);
+        }
+
+        .top-actions button {
+            height: 32px;
+            padding: 0 16px;
+            border: 1px solid var(--border);
+            background: #fff;
+            border-radius: 2px;
+            cursor: pointer;
+            color: var(--text-2);
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+
+        .top-actions button:hover {
+            color: var(--primary-6);
+            border-color: var(--primary-6);
+        }
+
+        .content-scroll {
+            padding: 24px;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        /* Dashboard Grid */
+        .grid-stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background: #fff;
+            padding: 20px 24px;
+            border-radius: 4px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.03);
+            border: 1px solid transparent;
+            transition: all 0.3s;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0) 0%, rgba(22, 93, 255, 0.05) 100%);
+            border-radius: 0 0 0 100%;
+        }
+
+        /* Card Hover Effect */
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.08);
+        }
+
+        .stat-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .stat-label {
+            font-size: 14px;
+            color: var(--text-2);
+        }
+
+        .stat-icon {
+            font-size: 20px;
+            color: var(--text-3);
+            opacity: 0.5;
+        }
+
+        .stat-val-row {
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+        }
+
+        .stat-value {
+            font-size: 30px;
+            font-weight: 700;
+            color: var(--text-1);
+            line-height: 1.2;
+            font-family: 'DIN Alternate', 'Roboto', sans-serif;
+        }
+
+        .stat-unit {
+            font-size: 12px;
+            color: var(--text-3);
+        }
+
+        .stat-trend {
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .trend-up {
+            color: var(--success-6);
+        }
+
+        /* Split Layout for Lists */
+        .split-module {
+            display: grid;
+            grid-template-columns: 2.5fr 1fr;
+            gap: 16px;
+        }
+
+        .modern-card {
+            background: #fff;
+            border-radius: 4px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.03);
+        }
+
+        .card-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .card-title {
+            font-size: 16px;
+            font-weight: 500;
+            color: var(--text-1);
+        }
+
+        .card-action a {
+            font-size: 14px;
+            color: var(--primary-6);
+            text-decoration: none;
+        }
+
+        /* Table Styles */
+        .table-wrapper {
+            padding: 0;
+        }
+
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .table th {
+            text-align: left;
+            padding: 12px 20px;
+            background: var(--fill-1);
+            color: var(--text-2);
+            font-weight: 500;
+            font-size: 13px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .table td {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            font-size: 14px;
+            color: var(--text-2);
+            vertical-align: middle;
+        }
+
+        .table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .table tr:hover {
+            background: var(--primary-1);
+        }
+
+        /* Badges */
+        .status-dot {
+            display: inline-block;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            margin-right: 6px;
+        }
+
+        .bg-success {
+            background: var(--success-6);
+        }
+
+        .bg-danger {
+            background: var(--danger-6);
+        }
+
+        .bg-gray {
+            background: var(--text-4);
+        }
+
+        /* Quick List */
+        .quick-list {
+            padding: 16px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .quick-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .quick-item:hover {
+            border-color: var(--primary-6);
+            background: var(--primary-1);
+        }
+
+        .quick-icon {
+            width: 32px;
+            height: 32px;
+            background: var(--fill-2);
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-2);
+        }
+    </style>
+</head>
+
+<body>
+    <aside class="sidebar">
+        <div class="logo-area">
+            <div class="logo-icon">H</div>
+            <div class="logo-text">Hydrosim Portal</div>
+        </div>
+        <nav class="nav-menu">
+            <a href="dashboard.html" class="nav-item active">
+                <span class="nav-icon">📊</span> 总览 (Dashboard)
+            </a>
+            <div class="nav-group-title">教学管理</div>
+            <a href="student_list.html" class="nav-item">
+                <span class="nav-icon">🎓</span> 学生项目管理
+            </a>
+            <a href="#" class="nav-item">
+                <span class="nav-icon">📦</span> 镜像仓库
+            </a>
+            <div class="nav-group-title">系统运维</div>
+            <a href="#" class="nav-item">
+                <span class="nav-icon">🚀</span> 部署记录
+            </a>
+            <a href="#" class="nav-item">
+                <span class="nav-icon">⚡</span> 资源监控
+            </a>
+        </nav>
+        <div class="user-profile">
+            <div class="avatar">李</div>
+            <div class="user-info">
+                <div class="user-name">李老师</div>
+                <div class="user-role">管理员</div>
+            </div>
+            <div style="cursor: pointer; color: var(--text-3);">⋮</div>
+        </div>
+    </aside>
+
+    <div class="workspace">
+        <div class="top-bar">
+            <h1 class="page-title">系统总览</h1>
+            <div class="top-actions">
+                <button>帮助文档</button>
+                <button>系统设置</button>
+            </div>
+        </div>
+
+        <div class="content-scroll">
+
+            <!-- Cards -->
+            <div class="grid-stats">
+                <div class="stat-card" onclick="location.href='student_list.html'">
+                    <div class="stat-header">
+                        <span class="stat-label">总项目数</span>
+                        <span class="stat-icon">📂</span>
+                    </div>
+                    <div class="stat-val-row">
+                        <span class="stat-value">42</span>
+                        <span class="stat-unit">个</span>
+                    </div>
+                    <div class="stat-trend" style="margin-top: 8px;">
+                        较上周 <span class="trend-up">▲ 12%</span>
+                    </div>
+                </div>
+
+                <div class="stat-card" onclick="location.href='student_list.html?status=running'"
+                    style="border-top: 3px solid var(--success-6);">
+                    <div class="stat-header">
+                        <span class="stat-label">运行中 (Running)</span>
+                        <span class="stat-icon" style="color: var(--success-6); opacity: 1;">●</span>
+                    </div>
+                    <div class="stat-val-row">
+                        <span class="stat-value" style="color: var(--success-6);">35</span>
+                        <span class="stat-unit">个</span>
+                    </div>
+                    <div class="stat-trend trend-up">系统负载正常</div>
+                </div>
+
+                <div class="stat-card" onclick="location.href='student_list.html?status=failed'"
+                    style="border-top: 3px solid var(--danger-6);">
+                    <div class="stat-header">
+                        <span class="stat-label">部署失败 (Failed)</span>
+                        <span class="stat-icon" style="color: var(--danger-6); opacity: 1;">⚠️</span>
+                    </div>
+                    <div class="stat-val-row">
+                        <span class="stat-value" style="color: var(--danger-6);">2</span>
+                        <span class="stat-unit">个</span>
+                    </div>
+                    <div class="stat-trend" style="color: var(--text-3);">亟需处理</div>
+                </div>
+
+                <div class="stat-card" onclick="location.href='student_list.html?status=pending'">
+                    <div class="stat-header">
+                        <span class="stat-label">待部署 (Pending)</span>
+                        <span class="stat-icon">⏳</span>
+                    </div>
+                    <div class="stat-val-row">
+                        <span class="stat-value">5</span>
+                        <span class="stat-unit">个</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Content Split -->
+            <div class="split-module">
+                <div class="modern-card">
+                    <div class="card-header">
+                        <span class="card-title">最近活跃项目</span>
+                        <span class="card-action"><a href="student_list.html">查看全部</a></span>
+                    </div>
+                    <div class="table-wrapper">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>学生信息</th>
+                                    <th>类型</th>
+                                    <th>状态</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>
+                                        <div style="font-weight: 500;">张三 (2025001)</div>
+                                        <div style="font-size: 12px; color: var(--text-3);">最后更新: 10分钟前</div>
+                                    </td>
+                                    <td><span
+                                            style="background: var(--primary-1); color: var(--primary-6); padding: 2px 8px; border-radius: 2px; font-size: 12px;">毕设</span>
+                                    </td>
+                                    <td>
+                                        <div style="display: flex; align-items: center;">
+                                            <span class="status-dot bg-success"></span> 运行中
+                                        </div>
+                                    </td>
+                                    <td><a href="#" style="color: var(--primary-6); text-decoration: none;">管理</a></td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <div style="font-weight: 500;">李四 (2025002)</div>
+                                        <div style="font-size: 12px; color: var(--text-3);">最后更新: 30分钟前</div>
+                                    </td>
+                                    <td><span
+                                            style="background: var(--fill-2); color: var(--text-2); padding: 2px 8px; border-radius: 2px; font-size: 12px;">课设</span>
+                                    </td>
+                                    <td>
+                                        <div style="display: flex; align-items: center;">
+                                            <span class="status-dot bg-danger"></span> 错误
+                                        </div>
+                                    </td>
+                                    <td><a href="#" style="color: var(--primary-6); text-decoration: none;">查看日志</a>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <div style="font-weight: 500;">王五 (2025003)</div>
+                                        <div style="font-size: 12px; color: var(--text-3);">最后更新: 2小时前</div>
+                                    </td>
+                                    <td><span
+                                            style="background: var(--primary-1); color: var(--primary-6); padding: 2px 8px; border-radius: 2px; font-size: 12px;">毕设</span>
+                                    </td>
+                                    <td>
+                                        <div style="display: flex; align-items: center;">
+                                            <span class="status-dot bg-gray"></span> 待部署
+                                        </div>
+                                    </td>
+                                    <td><a href="#" style="color: var(--primary-6); text-decoration: none;">管理</a></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div style="display: flex; flex-direction: column; gap: 16px;">
+                    <div class="modern-card">
+                        <div class="card-header">
+                            <span class="card-title">快捷操作</span>
+                        </div>
+                        <div class="quick-list">
+                            <div class="quick-item" onclick="location.href='student_list.html'">
+                                <div class="quick-icon" style="background: var(--primary-1); color: var(--primary-6);">+
+                                </div>
+                                <div>
+                                    <div style="font-weight: 500; font-size: 14px;">新建学生项目</div>
+                                    <div style="font-size: 12px; color: var(--text-3);">录入新的毕设或课设</div>
+                                </div>
+                            </div>
+                            <div class="quick-item">
+                                <div class="quick-icon" style="background: var(--danger-1); color: var(--danger-6);">!
+                                </div>
+                                <div>
+                                    <div style="font-weight: 500; font-size: 14px;">处理异常部署</div>
+                                    <div style="font-size: 12px; color: var(--text-3);">有 2 个项目需要关注</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="modern-card">
+                        <div class="card-header">
+                            <span class="card-title">平台状态</span>
+                        </div>
+                        <div style="padding: 20px;">
+                            <div
+                                style="margin-bottom: 12px; display: flex; justify-content: space-between; font-size: 13px;">
+                                <span style="color: var(--text-2);">K8s 集群状态</span>
+                                <span style="color: var(--success-6);">Healthy</span>
+                            </div>
+                            <div
+                                style="width: 100%; height: 4px; background: var(--fill-2); border-radius: 2px; margin-bottom: 20px;">
+                                <div
+                                    style="width: 100%; height: 100%; background: var(--success-6); border-radius: 2px;">
+                                </div>
+                            </div>
+
+                            <div
+                                style="margin-bottom: 12px; display: flex; justify-content: space-between; font-size: 13px;">
+                                <span style="color: var(--text-2);">节点资源使用率</span>
+                                <span style="color: var(--warning-6);">78%</span>
+                            </div>
+                            <div style="width: 100%; height: 4px; background: var(--fill-2); border-radius: 2px;">
+                                <div
+                                    style="width: 78%; height: 100%; background: var(--warning-6); border-radius: 2px;">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</body>
+
+</html>

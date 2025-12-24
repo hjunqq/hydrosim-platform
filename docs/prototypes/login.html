@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>登录 - Hydrosim 教学管理门户</title>
+    <style>
+        :root {
+            --primary-color: #165DFF;
+            /* Arco Blue */
+            --primary-hover: #4080FF;
+            --text-title: #1D2129;
+            --text-body: #4E5969;
+            --text-sub: #86909C;
+            --border-color: #E5E6EB;
+            --bg-color: #F2F3F5;
+            --white: #FFFFFF;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'PingFang SC', 'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            height: 100vh;
+            display: flex;
+            background: #fff;
+        }
+
+        /* Split Layout */
+        .left-panel {
+            flex: 1;
+            background: linear-gradient(135deg, #165DFF 0%, #00369E 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: #fff;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Decorative circles */
+        .circle {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .c1 {
+            width: 400px;
+            height: 400px;
+            top: -100px;
+            left: -100px;
+        }
+
+        .c2 {
+            width: 300px;
+            height: 300px;
+            bottom: 50px;
+            right: -50px;
+        }
+
+        .brand-intro {
+            z-index: 10;
+            text-align: center;
+            padding: 40px;
+        }
+
+        .brand-intro h1 {
+            font-size: 48px;
+            margin-bottom: 24px;
+            font-weight: 300;
+            letter-spacing: 2px;
+        }
+
+        .brand-intro p {
+            font-size: 18px;
+            opacity: 0.8;
+            line-height: 1.6;
+            max-width: 480px;
+            margin: 0 auto;
+        }
+
+        .right-panel {
+            width: 480px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 60px;
+            background: #fff;
+        }
+
+        /* Login Form */
+        .login-container {
+            width: 100%;
+            max-width: 320px;
+            margin: 0 auto;
+        }
+
+        .welcome-text {
+            margin-bottom: 40px;
+        }
+
+        .welcome-text h2 {
+            font-size: 28px;
+            color: var(--text-title);
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .welcome-text span {
+            color: var(--text-sub);
+            font-size: 14px;
+        }
+
+        .form-item {
+            margin-bottom: 24px;
+            position: relative;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 14px;
+            color: var(--text-title);
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        .input-wrapper {
+            position: relative;
+        }
+
+        .input-field {
+            width: 100%;
+            height: 48px;
+            padding: 0 16px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            font-size: 14px;
+            color: var(--text-title);
+            transition: all 0.3s;
+            outline: none;
+            background: #fff;
+        }
+
+        .input-field:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 2px rgba(22, 93, 255, 0.2);
+        }
+
+        .input-field::placeholder {
+            color: #C9CDD4;
+        }
+
+        .actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 32px;
+        }
+
+        .checkbox-wrapper {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+        }
+
+        .checkbox-wrapper input {
+            margin-right: 8px;
+        }
+
+        .checkbox-wrapper span {
+            font-size: 13px;
+            color: var(--text-body);
+        }
+
+        .forget-link {
+            font-size: 13px;
+            color: var(--primary-color);
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .submit-btn {
+            width: 100%;
+            height: 48px;
+            background: var(--primary-color);
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.3s;
+            box-shadow: 0 4px 10px rgba(22, 93, 255, 0.3);
+        }
+
+        .submit-btn:hover {
+            background: var(--primary-hover);
+        }
+
+        .footer {
+            margin-top: 60px;
+            text-align: center;
+            font-size: 12px;
+            color: var(--text-sub);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="left-panel">
+        <div class="circle c1"></div>
+        <div class="circle c2"></div>
+        <div class="brand-intro">
+            <h1>Hydrosim Portal</h1>
+            <p>专业的教学计算容器托管平台<br>为工程教育提供稳定、高效的云端基础设施</p>
+        </div>
+    </div>
+
+    <div class="right-panel">
+        <div class="login-container">
+            <div class="welcome-text">
+                <h2>欢迎回来</h2>
+                <span>请输入您的教师账号以继续管理课程</span>
+            </div>
+
+            <form>
+                <div class="form-item">
+                    <label class="form-label">账号 (Username)</label>
+                    <div class="input-wrapper">
+                        <input type="text" class="input-field" placeholder="请输入教师工号或邮箱">
+                    </div>
+                </div>
+
+                <div class="form-item">
+                    <label class="form-label">密码 (Password)</label>
+                    <div class="input-wrapper">
+                        <input type="password" class="input-field" placeholder="请输入您的密码">
+                    </div>
+                </div>
+
+                <div class="actions">
+                    <label class="checkbox-wrapper">
+                        <input type="checkbox"> <span>记住我</span>
+                    </label>
+                    <a href="#" class="forget-link">忘记密码？</a>
+                </div>
+
+                <button type="button" class="submit-btn" onclick="window.location.href='dashboard.html'">登 录</button>
+            </form>
+
+            <div class="footer">
+                Hydrosim Platform &copy; 2025 Created by Engineering Dept.
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

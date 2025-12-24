@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>项目列表 - Hydrosim 教学管理门户</title>
+    <style>
+        :root {
+            --primary-6: #165DFF;
+            --primary-1: #E8F3FF;
+            --success-6: #00B42A;
+            --success-1: #E8FFEA;
+            --danger-6: #F53F3F;
+            --danger-1: #FFECE8;
+            --text-1: #1D2129;
+            --text-2: #4E5969;
+            --text-3: #86909C;
+            --fill-1: #F7F8FA;
+            --bg-white: #FFFFFF;
+            --border: #E5E6EB;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: var(--fill-1);
+            font-family: 'PingFang SC', sans-serif;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .sidebar {
+            width: 240px;
+            background: #fff;
+            border-right: 1px solid var(--border);
+        }
+
+        /* reusing sidebar styles briefly */
+        .logo-area {
+            height: 64px;
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            border-bottom: 1px solid var(--border);
+            font-weight: bold;
+        }
+
+        .nav-item {
+            display: block;
+            padding: 12px 20px;
+            color: var(--text-2);
+            text-decoration: none;
+            font-size: 14px;
+        }
+
+        .nav-item.active {
+            background: var(--primary-1);
+            color: var(--primary-6);
+            border-right: 3px solid var(--primary-6);
+        }
+
+        .workspace {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .top-header {
+            height: 64px;
+            background: #fff;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 24px;
+        }
+
+        .page-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-1);
+        }
+
+        .content {
+            padding: 24px;
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        /* Filter Bar */
+        .filter-bar {
+            background: #fff;
+            padding: 16px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border);
+            border-radius: 4px 4px 0 0;
+        }
+
+        .filter-group {
+            display: flex;
+            gap: 12px;
+        }
+
+        .input-search {
+            height: 32px;
+            width: 240px;
+            border: 1px solid var(--border);
+            padding: 0 12px;
+            border-radius: 2px;
+            outline: none;
+            font-size: 13px;
+        }
+
+        .input-search:focus {
+            border-color: var(--primary-6);
+        }
+
+        .select-filter {
+            height: 32px;
+            width: 120px;
+            border: 1px solid var(--border);
+            border-radius: 2px;
+            padding: 0 8px;
+            color: var(--text-2);
+            font-size: 13px;
+        }
+
+        .btn {
+            height: 32px;
+            padding: 0 16px;
+            border-radius: 2px;
+            border: none;
+            cursor: pointer;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-primary {
+            background: var(--primary-6);
+            color: #fff;
+        }
+
+        .btn-default {
+            background: #fff;
+            border: 1px solid var(--border);
+            color: var(--text-2);
+        }
+
+        .btn-default:hover {
+            color: var(--primary-6);
+            border-color: var(--primary-6);
+        }
+
+        /* List Table */
+        .list-container {
+            background: #fff;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+            border-radius: 4px;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .data-table th {
+            text-align: left;
+            padding: 14px 24px;
+            background: #F7F8FA;
+            color: var(--text-2);
+            font-weight: 500;
+            font-size: 13px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .data-table td {
+            padding: 16px 24px;
+            border-bottom: 1px solid var(--border);
+            font-size: 14px;
+            color: var(--text-1);
+        }
+
+        .data-table tr:hover {
+            background-color: #F7F8FA;
+        }
+
+        .user-meta {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .user-code {
+            font-size: 12px;
+            color: var(--text-3);
+            font-family: monospace;
+        }
+
+        .tag {
+            padding: 2px 8px;
+            border-radius: 2px;
+            font-size: 12px;
+        }
+
+        .tag-blue {
+            background: var(--primary-1);
+            color: var(--primary-6);
+        }
+
+        .tag-gray {
+            background: var(--fill-1);
+            color: var(--text-2);
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+        }
+
+        .st-success {
+            background: var(--success-1);
+            color: var(--success-6);
+        }
+
+        .st-danger {
+            background: var(--danger-1);
+            color: var(--danger-6);
+        }
+
+        .st-waiting {
+            background: #F2F3F5;
+            color: var(--text-3);
+        }
+
+        .dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            margin-right: 6px;
+            background: currentColor;
+        }
+
+        .link-text {
+            color: var(--primary-6);
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        .link-text:hover {
+            text-decoration: underline;
+        }
+
+        .actions {
+            display: flex;
+            gap: 16px;
+            justify-content: flex-end;
+        }
+
+        .pagination {
+            padding: 16px 24px;
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+            border-top: 1px solid var(--border);
+        }
+
+        .page-item {
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid var(--border);
+            border-radius: 2px;
+            cursor: pointer;
+            color: var(--text-2);
+            font-size: 13px;
+        }
+
+        .page-item.active {
+            border-color: var(--primary-6);
+            color: var(--primary-6);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="sidebar">
+        <div class="logo-area">Hydrosim Portal</div>
+        <a href="dashboard.html" class="nav-item">总览</a>
+        <a href="#" class="nav-item active">学生项目管理</a>
+        <a href="#" class="nav-item">部署记录</a>
+    </div>
+
+    <div class="workspace">
+        <div class="top-header">
+            <h1 class="page-title">学生项目列表</h1>
+            <div style="font-size: 13px; color: var(--text-3);">共 42 个项目</div>
+        </div>
+
+        <div class="content">
+            <div class="list-container">
+                <!-- Filter -->
+                <div class="filter-bar">
+                    <div class="filter-group">
+                        <input type="text" class="input-search" placeholder="搜索学生姓名、学号或项目ID">
+                        <select class="select-filter">
+                            <option>所有类型</option>
+                            <option>毕业设计</option>
+                            <option>课程设计</option>
+                        </select>
+                        <select class="select-filter">
+                            <option>所有状态</option>
+                            <option>运行中</option>
+                            <option>异常</option>
+                            <option>待部署</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <button class="btn btn-default">刷新</button>
+                        <button class="btn btn-primary" onclick="alert('Open Create Modal')">+ 新建项目</button>
+                    </div>
+                </div>
+
+                <!-- Table -->
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th width="200">学生信息</th>
+                            <th width="120">项目类型</th>
+                            <th>访问域名 (Domain)</th>
+                            <th width="140">当前状态</th>
+                            <th width="180">更新时间</th>
+                            <th width="180" style="text-align: right;">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>
+                                <div class="user-meta">
+                                    <span>张三</span>
+                                    <span class="user-code">2025001</span>
+                                </div>
+                            </td>
+                            <td><span class="tag tag-blue">毕业设计</span></td>
+                            <td><a class="link-text" href="#" target="_blank">zhangsan.hydrosim.cloud</a></td>
+                            <td><span class="status-badge st-success"><span class="dot"></span>运行中</span></td>
+                            <td style="color: var(--text-3); font-size: 13px;">2024-12-24 10:30</td>
+                            <td>
+                                <div class="actions">
+                                    <a class="link-text" href="student_detail.html">详情</a>
+                                    <a class="link-text" href="#">重新部署</a>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <div class="user-meta">
+                                    <span>李四</span>
+                                    <span class="user-code">2025002</span>
+                                </div>
+                            </td>
+                            <td><span class="tag tag-gray">课程设计</span></td>
+                            <td><span style="color: var(--text-4);">-</span></td>
+                            <td><span class="status-badge st-danger"><span class="dot"></span>启动失败</span></td>
+                            <td style="color: var(--text-3); font-size: 13px;">2024-12-23 15:45</td>
+                            <td>
+                                <div class="actions">
+                                    <a class="link-text" href="student_detail.html">详情</a>
+                                    <a class="link-text" href="#">查看日志</a>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <div class="user-meta">
+                                    <span>王五</span>
+                                    <span class="user-code">2025003</span>
+                                </div>
+                            </td>
+                            <td><span class="tag tag-blue">毕业设计</span></td>
+                            <td><span style="color: var(--text-4);">-</span></td>
+                            <td><span class="status-badge st-waiting"><span class="dot"></span>待部署</span></td>
+                            <td style="color: var(--text-3); font-size: 13px;">2024-12-20 09:12</td>
+                            <td>
+                                <div class="actions">
+                                    <a class="link-text" href="student_detail.html">详情</a>
+                                    <a class="link-text" href="#">立即部署</a>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <!-- Pagination -->
+                <div class="pagination">
+                    <div class="page-item">
+                        << /div>
+                            <div class="page-item active">1</div>
+                            <div class="page-item">2</div>
+                            <div class="page-item">3</div>
+                            <div class="page-item">></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+</body>
+
+</html>
