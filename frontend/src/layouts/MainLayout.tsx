@@ -12,7 +12,7 @@ const MainLayout = () => {
         { id: 'dashboard', text: '总览', icon: '📊', path: '/dashboard' },
         { id: 'students', text: '学生项目管理', icon: '🎓', path: '/students' },
         { id: 'images', text: '镜像仓库', icon: '📦', path: '#' },
-        { id: 'deployments', text: '部署记录', icon: '🚀', path: '#' },
+        { id: 'deployments', text: '部署记录', icon: '🚀', path: '/deployments' },
         { id: 'monitoring', text: '资源监控', icon: '⚡', path: '#' },
     ]
 

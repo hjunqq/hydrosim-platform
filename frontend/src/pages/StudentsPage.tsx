@@ -6,6 +6,7 @@ import Button from 'devextreme-react/button'
 import notify from 'devextreme/ui/notify'
 
 import { studentsApi, Student } from '../api/students'
+import { deploymentsApi } from '../api/deployments'
 import DeploymentStatusModal from '../components/DeploymentStatusModal'
 
 const StudentsPage = () => {
@@ -32,7 +33,8 @@ const StudentsPage = () => {
         git_repo_url: ''
     })
     const [deployForm, setDeployForm] = useState({
-        image_tag: 'nginx:alpine'
+        image: '',
+        project_type: 'gd'
     })
 
     // Load Data
@@ -74,7 +76,10 @@ const StudentsPage = () => {
         e.preventDefault()
         if (!selectedStudent) return
         try {
-            await studentsApi.deploy(selectedStudent.id, deployForm)
+            await deploymentsApi.triggerDeploy(selectedStudent.student_code, {
+                image: deployForm.image,
+                project_type: deployForm.project_type as 'gd' | 'cd'
+            })
             setIsDeployConfigVisible(false)
             setIsDeployStatusVisible(true)
             loadData()
@@ -85,6 +90,10 @@ const StudentsPage = () => {
 
     const openDeployPopup = (student: Student) => {
         setSelectedStudent(student)
+        setDeployForm({
+            image: '',
+            project_type: student.project_type
+        })
         setIsDeployConfigVisible(true)
     }
 
@@ -326,9 +335,27 @@ const StudentsPage = () => {
                         </p>
                     </div>
                     <Form formData={deployForm} onFieldDataChanged={handleDeployFormChange} labelLocation="top">
-                        <FormItem dataField="image_tag" editorType="dxTextBox">
-                            <Label text="Docker 镜像 Tag" />
+                        <FormItem
+                            dataField="image"
+                            editorType="dxTextBox"
+                            editorOptions={{
+                                placeholder: 'e.g. registry.example.com/project:v1'
+                            }}
+                        >
+                            <Label text="Docker 镜像 (Image)" />
                             <RequiredRule />
+                        </FormItem>
+                        <FormItem
+                            dataField="project_type"
+                            editorType="dxSelectBox"
+                            editorOptions={{
+                                items: [{ id: 'gd', text: '毕业设计' }, { id: 'cd', text: '课程设计' }],
+                                displayExpr: 'text',
+                                valueExpr: 'id',
+                                disabled: true
+                            }}
+                        >
+                            <Label text="项目类型" />
                         </FormItem>
                     </Form>
                     <div style={{ marginTop: 24, display: 'flex', justifyContent: 'flex-end', gap: 8 }}>

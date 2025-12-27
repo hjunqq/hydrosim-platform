@@ -4,28 +4,25 @@
 
 ```
 hydrosim-platform/
-├── frontend/                      # 前端 - Vue 3 教师管理门户
+├── frontend/                      # 前端 - React 教师管理门户
 │   ├── src/
 │   │   ├── api/                   # API 调用封装
 │   │   │   ├── request.ts         # Axios 封装
 │   │   │   └── auth.ts            # 认证 API
 │   │   ├── components/            # 通用组件
-│   │   ├── views/                 # 页面视图
-│   │   │   ├── LoginView.vue      # 登录页
-│   │   │   └── DashboardView.vue  # 仪表盘
-│   │   ├── router/                # 路由配置
-│   │   │   └── index.ts
-│   │   ├── stores/                # Pinia 状态管理
+│   │   ├── pages/                 # 页面视图 (React Pages)
+│   │   │   ├── LoginPage.tsx      # 登录页
+│   │   │   ├── DashboardPage.tsx  # 仪表盘
+│   │   │   └── StudentsPage.tsx   # 学生管理
+│   │   ├── layouts/               # 布局组件
+│   │   │   └── MainLayout.tsx
+│   │   ├── router.tsx             # 路由配置
+│   │   ├── store/                 # Zustand 状态管理
 │   │   ├── types/                 # TypeScript 类型
-│   │   │   └── index.ts
-│   │   ├── utils/                 # 工具函数
-│   │   ├── App.vue                # 根组件
-│   │   └── main.ts                # 入口文件
+│   │   ├── App.tsx                # 根组件
+│   │   └── main.tsx               # 入口文件
 │   ├── public/                    # 静态资源
-│   ├── .env.development           # 开发环境变量
-│   ├── .env.production            # 生产环境变量
-│   ├── Dockerfile                 # 前端镜像构建
-│   ├── nginx.conf                 # Nginx 配置
+│   ├── index.html                 # HTML 入口
 │   ├── package.json
 │   ├── vite.config.ts
 │   └── tsconfig.json

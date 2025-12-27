@@ -1,11 +1,12 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import Button from 'devextreme-react/button'
 import Form, { Item as FormItem, Label, RequiredRule } from 'devextreme-react/form'
 import { Popup } from 'devextreme-react/popup'
 import notify from 'devextreme/ui/notify'
 
-import { studentsApi, Student, DeployParams } from '../api/students'
+import { studentsApi, Student } from '../api/students'
+import { deploymentsApi, DeployRequest, DeploymentStatus } from '../api/deployments'
 import DeploymentStatusModal from '../components/DeploymentStatusModal'
 
 const StudentDetailPage = () => {
@@ -15,10 +16,14 @@ const StudentDetailPage = () => {
     const [loading, setLoading] = useState(true)
     const [deployHistory, setDeployHistory] = useState<any[]>([])
 
+    // Polling State
+    const [deployStatus, setDeployStatus] = useState<DeploymentStatus | null>(null)
+    const pollingTimer = useRef<NodeJS.Timeout | null>(null)
+
     // Deploy Modal State
     const [isDeployPopupVisible, setIsDeployPopupVisible] = useState(false)
     const [isDeployStatusVisible, setIsDeployStatusVisible] = useState(false)
-    const [deployForm, setDeployForm] = useState<DeployParams>({ image_tag: 'nginx:alpine' })
+    const [deployForm, setDeployForm] = useState<DeployRequest>({ image: 'nginx:alpine', project_type: 'gd' })
 
     const loadData = async () => {
         if (!id) return
@@ -26,12 +31,18 @@ const StudentDetailPage = () => {
             setLoading(true)
             const data = await studentsApi.get(parseInt(id)) as unknown as Student
             setStudent(data)
+            // Update form default project_type
+            setDeployForm(prev => ({ ...prev, project_type: data.project_type }))
 
-            // Mock History Data
+            // Initial status check
+            fetchDeployStatus(data.student_code, data.project_type)
+
+            // Start polling
+            startPolling(data.student_code, data.project_type)
+
+            // Mock History Data (Backend doesn't provide history yet)
             setDeployHistory([
                 { id: 101, status: 'success', image_tag: 'nginx:alpine', created_at: '2024-12-24 10:30:45', duration: '45s', user: '李老师' },
-                { id: 100, status: 'failed', image_tag: 'nginx:latest', created_at: '2024-12-23 15:45:12', duration: '12s', user: '系统自动' },
-                { id: 99, status: 'success', image_tag: 'nginx:v1.0', created_at: '2024-12-20 09:12:00', duration: '50s', user: '张三' }
             ])
         } catch (err) {
             notify('加载学生详情失败', 'error', 3000)
@@ -41,26 +52,49 @@ const StudentDetailPage = () => {
         }
     }
 
+    const fetchDeployStatus = async (code: string, type: string) => {
+        try {
+            const status = await deploymentsApi.getStatus(code, type)
+            setDeployStatus(status)
+        } catch (err) {
+            console.error("Failed to fetch status", err)
+        }
+    }
+
+    const startPolling = (code: string, type: string) => {
+        if (pollingTimer.current) clearInterval(pollingTimer.current)
+        pollingTimer.current = setInterval(() => {
+            fetchDeployStatus(code, type)
+        }, 3000) // Poll every 3 seconds
+    }
+
     useEffect(() => {
         loadData()
+        return () => {
+            if (pollingTimer.current) clearInterval(pollingTimer.current)
+        }
     }, [id])
 
     const handleDeploySubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         if (!student) return
         try {
-            await studentsApi.deploy(student.id, deployForm)
+            await deploymentsApi.triggerDeploy(student.student_code, deployForm)
             setIsDeployPopupVisible(false)
             setIsDeployStatusVisible(true)
-            // Add to mock history
+
+            notify('部署任务已提交', 'success', 2000)
+
+            // Add to mock history (Optimistic update)
             setDeployHistory(prev => [{
                 id: Date.now(),
                 status: 'processing',
-                image_tag: deployForm.image_tag,
+                image_tag: deployForm.image,
                 created_at: new Date().toLocaleString('zh-CN'),
                 duration: '-',
-                user: '李老师'
+                user: 'User'
             }, ...prev])
+
         } catch (err: any) {
             notify(err.response?.data?.detail || '部署失败', 'error', 3000)
         }
@@ -78,7 +112,10 @@ const StudentDetailPage = () => {
         )
     }
 
-    const isRunning = !!student.domain
+    // Determine visual status from realtime data
+    const isRunning = deployStatus?.status === 'running'
+    const isDeploying = deployStatus?.status === 'deploying'
+    const isError = deployStatus?.status === 'error'
 
     return (
         <>
@@ -114,8 +151,8 @@ const StudentDetailPage = () => {
                     <div style={{ display: 'flex', gap: 8 }}>
                         <button className="btn btn-default" onClick={() => notify('编辑功能开发中', 'info', 2000)}>编辑配置</button>
                         <button className="btn btn-primary" onClick={() => setIsDeployPopupVisible(true)}>部署新版本</button>
-                        {student.domain && (
-                            <button className="btn btn-default" onClick={() => window.open(`http://${student.domain}`, '_blank')}>访问网站</button>
+                        {isRunning && student.domain && (
+                            <button className="btn btn-default" onClick={() => window.open(`http://${student.student_code}.${student.project_type}.hydrosim.cn`, '_blank')}>访问网站</button>
                         )}
                     </div>
                 </div>
@@ -154,23 +191,25 @@ const StudentDetailPage = () => {
                                 </div>
                             </div>
                             <div>
-                                <div style={{ fontSize: 13, color: 'var(--text-3)', marginBottom: 4 }}>分配域名</div>
+                                <div style={{ fontSize: 13, color: 'var(--text-3)', marginBottom: 4 }}>目标域名</div>
                                 <div style={{ fontSize: 14, color: 'var(--text-1)', fontWeight: 500 }}>
-                                    {student.domain || <span style={{ color: 'var(--text-4)' }}>未分配</span>}
+                                    {`http://${student.student_code}.${student.project_type}.hydrosim.cn`}
                                 </div>
                             </div>
                             <div>
-                                <div style={{ fontSize: 13, color: 'var(--text-3)', marginBottom: 4 }}>当前镜像 Tag</div>
+                                <div style={{ fontSize: 13, color: 'var(--text-3)', marginBottom: 4 }}>最近部署镜像</div>
                                 <div style={{
                                     fontSize: 14, fontWeight: 500, fontFamily: 'monospace',
                                     background: 'var(--fill-2)', padding: '2px 6px', borderRadius: 2, display: 'inline-block'
                                 }}>
-                                    {deployForm.image_tag}
+                                    {deployForm.image}
                                 </div>
                             </div>
                             <div>
-                                <div style={{ fontSize: 13, color: 'var(--text-3)', marginBottom: 4 }}>容器端口</div>
-                                <div style={{ fontSize: 14, color: 'var(--text-1)', fontWeight: 500 }}>80 (http)</div>
+                                <div style={{ fontSize: 13, color: 'var(--text-3)', marginBottom: 4 }}>副本状态</div>
+                                <div style={{ fontSize: 14, color: 'var(--text-1)', fontWeight: 500 }}>
+                                    {deployStatus?.ready_replicas || '-/-'}
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -184,25 +223,23 @@ const StudentDetailPage = () => {
                     <div className="card-body" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 200 }}>
                         <div style={{
                             width: 100, height: 100, borderRadius: '50%',
-                            border: `4px solid ${isRunning ? 'var(--success-1)' : 'var(--fill-2)'}`,
+                            border: `4px solid ${isRunning ? 'var(--success-1)' : (isError ? 'var(--danger-1)' : 'var(--warning-1)')}`,
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            fontSize: 48, color: isRunning ? 'var(--success-6)' : 'var(--text-3)',
-                            marginBottom: 16
+                            fontSize: 48,
+                            color: isRunning ? 'var(--success-6)' : (isError ? 'var(--danger-6)' : 'var(--warning-6)'),
+                            marginBottom: 16,
+                            transition: 'all 0.3s ease'
                         }}>
-                            {isRunning ? '✔' : '⏳'}
+                            {isRunning ? '✔' : (isError ? '✖' : '⚡')}
                         </div>
                         <div style={{
                             fontWeight: 600, fontSize: 18,
-                            color: isRunning ? 'var(--success-6)' : 'var(--text-3)'
+                            color: isRunning ? 'var(--success-6)' : (isError ? 'var(--danger-6)' : 'var(--warning-6)')
                         }}>
-                            {isRunning ? 'RUNNING' : 'PENDING'}
+                            {deployStatus?.status.toUpperCase() || 'UNKNOWN'}
                         </div>
-                        <p style={{ marginTop: 16, color: 'var(--text-3)', textAlign: 'center', fontSize: 13 }}>
-                            {isRunning ? (
-                                <>服务运行正常<br />已持续运行 4 天 12 小时</>
-                            ) : (
-                                '等待首次部署'
-                            )}
+                        <p style={{ marginTop: 16, color: 'var(--text-3)', textAlign: 'center', fontSize: 13, padding: '0 20px' }}>
+                            {deployStatus?.detail || 'Fetching status...'}
                         </p>
                     </div>
                 </div>
@@ -264,8 +301,8 @@ const StudentDetailPage = () => {
                         将拉取最新镜像并重启容器
                     </p>
                     <Form formData={deployForm} onFieldDataChanged={handleDeployFormChange} labelLocation="top">
-                        <FormItem dataField="image_tag" editorType="dxTextBox">
-                            <Label text="Docker 镜像 Tag" />
+                        <FormItem dataField="image" editorType="dxTextBox">
+                            <Label text="Docker 镜像 (Repo:Tag)" />
                             <RequiredRule />
                         </FormItem>
                     </Form>
@@ -281,7 +318,7 @@ const StudentDetailPage = () => {
                 visible={isDeployStatusVisible}
                 onClose={() => setIsDeployStatusVisible(false)}
                 studentName={student?.name}
-                domain={student?.domain}
+                domain={`${student?.student_code}.${student?.project_type}.hydrosim.cn`}
             />
         </>
     )

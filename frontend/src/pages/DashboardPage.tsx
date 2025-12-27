@@ -135,7 +135,7 @@ const DashboardPage = () => {
                 {recentProjects.map((student) => (
                   <tr key={student.id}>
                     <td>
-                      <div style={{ fontWeight: 500 }}>{student.name} ({student.code})</div>
+                      <div style={{ fontWeight: 500 }}>{student.name} ({student.student_code})</div>
                       <div style={{ fontSize: 12, color: 'var(--text-3)' }}>最后更新: 10分钟前</div>
                     </td>
                     <td>

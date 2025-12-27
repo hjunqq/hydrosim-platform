@@ -1,34 +1,63 @@
 #!/bin/bash
-# 批量创建学生项目资源脚本
 
-set -e
-
-NAMESPACE="hydrosim"
+# Configuration
+API_URL=${API_URL:-"http://localhost:8000"}
+AUTH_TOKEN=${AUTH_TOKEN:-""}
 CSV_FILE=${1:-"students.csv"}
 
-echo "===================================="
-echo "批量创建学生项目资源"
-echo "===================================="
+# Colors
+GREEN='\033[0;32m'
+RED='\033[0;31m'
+NC='\033[0m'
 
-if [ ! -f "$CSV_FILE" ]; then
-    echo "错误: 找不到学生名单文件 $CSV_FILE"
+if [ -z "$AUTH_TOKEN" ]; then
+    echo -e "${RED}Error: AUTH_TOKEN environment variable is required.${NC}"
+    echo "Usage: AUTH_TOKEN=xxx ./batch-create.sh [csv_file]"
     exit 1
 fi
 
-# 读取 CSV 文件（跳过标题行）
-tail -n +2 "$CSV_FILE" | while IFS=',' read -r student_id student_name project_type; do
-    echo "正在创建学生项目: $student_id - $student_name ($project_type)"
-    
-    # TODO: 调用 API 或 kubectl 创建资源
-    # 示例：
-    # - 创建 Git 仓库
-    # - 创建 Kubernetes Deployment
-    # - 创建 Service
-    # - 分配访问 URL
-    
-    echo "  ✓ 学生 $student_id 的项目资源创建完成"
+if [ ! -f "$CSV_FILE" ]; then
+    echo -e "${RED}Error: File $CSV_FILE not found.${NC}"
+    exit 1
+fi
+
+echo "Processing $CSV_FILE..."
+
+# Skip header and read file
+tail -n +2 "$CSV_FILE" | while IFS=, read -r student_code name project_type git_repo_url || [ -n "$student_code" ]; do
+    # Trim whitespace
+    student_code=$(echo "$student_code" | xargs)
+    name=$(echo "$name" | xargs)
+    project_type=$(echo "$project_type" | xargs)
+    git_repo_url=$(echo "$git_repo_url" | xargs)
+
+    if [ -z "$student_code" ]; then continue; fi
+
+    echo -n "Creating student $student_code ($name)... "
+
+    # JSON Payload
+    JSON_DATA=$(cat <<EOF
+{
+  "student_code": "$student_code",
+  "name": "$name",
+  "project_type": "$project_type",
+  "git_repo_url": "$git_repo_url"
+}
+EOF
+)
+
+    # API Call
+    RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$API_URL/api/v1/students" \
+        -H "Authorization: Bearer $AUTH_TOKEN" \
+        -H "Content-Type: application/json" \
+        -d "$JSON_DATA")
+
+    if [ "$RESPONSE" -eq 200 ] || [ "$RESPONSE" -eq 201 ]; then
+        echo -e "${GREEN}Success${NC}"
+    else
+        echo -e "${RED}Failed (Status: $RESPONSE)${NC}"
+    fi
+
 done
 
-echo "===================================="
-echo "所有学生项目资源创建完成"
-echo "===================================="
+echo "Batch creation complete."

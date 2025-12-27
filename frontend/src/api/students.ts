@@ -24,10 +24,6 @@ export interface CreateStudentParams {
     git_repo_url?: string
 }
 
-export interface DeployParams {
-    image_tag: string
-}
-
 export const studentsApi = {
     list(params?: { project_type?: string }) {
         return request.get<Student[]>('/api/v1/students', { params })
@@ -47,9 +43,5 @@ export const studentsApi = {
 
     delete(id: number) {
         return request.delete(`/api/v1/students/${id}`)
-    },
-
-    deploy(studentId: number, data: DeployParams) {
-        return request.post<{ status: string, domain: string }>(`/api/v1/deploy/${studentId}`, data)
     }
 }

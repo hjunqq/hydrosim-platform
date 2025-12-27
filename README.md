@@ -14,7 +14,7 @@
 
 ### 技术栈
 
-- **前端**: Vue 3 + TypeScript + Vite + Element Plus
+- **前端**: React + TypeScript + Vite + DevExtreme + Zustand
 - **后端**: FastAPI + SQLAlchemy + PostgreSQL
 - **容器编排**: Kubernetes (k3s)
 - **CI/CD**: Gitea + Gitea Actions
@@ -64,9 +64,9 @@ docker-compose up -d
 
 ## 文档
 
-- [架构设计](docs/architecture.md)
+- [架构设计](docs/technical_design/architecture_design.md)
 - [部署指南](docs/setup-guide.md)
-- [API 参考](docs/api-reference.md)
+- [API 参考](docs/api/backend_api.md)
 - [教师使用手册](docs/teacher-guide.md)
 
 ## 开发团队

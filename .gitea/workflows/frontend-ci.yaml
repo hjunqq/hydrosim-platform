@@ -1,0 +1,29 @@
+name: Frontend Build
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'frontend/**'
+  pull_request:
+    paths:
+      - 'frontend/**'
+
+jobs:
+  build-frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      - name: Install Dependencies
+        run: |
+          cd frontend
+          npm install -g pnpm
+          pnpm install
+      - name: Build
+        run: |
+          cd frontend
+          pnpm run build
