@@ -61,7 +61,7 @@ List all Kubernetes deployments found in the managed namespaces (`students-gd`, 
       "project_type": "gd",
       "namespace": "students-gd",
       "deployment_name": "student-s2025_001",
-      "image": "nginx:alpine",
+      "image": "registry.hydrosim.cn/gd/s2025_001:v1",
       "replicas": "1/1",
       "status": "Running",
       "created_at": "2025-12-27T01:00:00Z"

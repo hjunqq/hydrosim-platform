@@ -25,7 +25,7 @@ def test_resource_generation():
     # 1. 模拟输入
     builder = StudentProjectBuilder(
         student_code="s2025_test",
-        image="registry.internal/s2025_test:v1",
+        image="registry.hydrosim.cn/gd/s2025_test:v1",
         namespace="students-gd",
         domain_suffix="test.hydrosim.cn"
     )
@@ -100,11 +100,11 @@ python tests/test_deploy_logic.py
     curl -X POST "http://127.0.0.1:8000/api/v1/deploy/s2025_001" \
          -H "Content-Type: application/json" \
          -d '{
-               "image": "nginx:alpine", 
+               "image": "registry.hydrosim.cn/gd/s2025_001:v1",
                "project_type": "gd"
              }'
     ```
-    *注：这里使用 `nginx:alpine` 作为测试镜像，因为它公开可拉取且轻量。*
+    *注：这里使用标准镜像示例，请确保集群具备拉取该仓库镜像的权限。*
 
 3.  **验证结果** (在终端中):
     ```bash
@@ -119,7 +119,7 @@ python tests/test_deploy_logic.py
     ```
 
 4.  **验证回滚逻辑**:
-    修改请求中的 image 为一个不存在的镜像 (例如 `nginx:invalid-tag`) 并再次发送请求。
+    修改请求中的 image 为一个不存在的镜像 (例如 `registry.hydrosim.cn/gd/s2025_001:invalid-tag`) 并再次发送请求。
     
     *预期结果*:
     *   API 返回 "updated"。

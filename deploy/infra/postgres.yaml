@@ -1,0 +1,73 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: portal-postgres-secret
+  namespace: hydrosim
+type: Opaque
+stringData:
+  POSTGRES_USER: "hydrosim_portal"
+  POSTGRES_PASSWORD: "StrongPass123"
+  POSTGRES_DB: "hydrosim_portal"
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: portal-postgres-pvc
+  namespace: hydrosim
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: portal-postgres
+  namespace: hydrosim
+  labels:
+    app: portal-postgres
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: portal-postgres
+  template:
+    metadata:
+      labels:
+        app: portal-postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:15-alpine
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 5432
+              name: postgres
+          envFrom:
+            - secretRef:
+                name: portal-postgres-secret
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: portal-postgres-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: portal-postgres
+  namespace: hydrosim
+  labels:
+    app: portal-postgres
+spec:
+  type: ClusterIP
+  selector:
+    app: portal-postgres
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: 5432

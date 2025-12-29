@@ -19,7 +19,7 @@
 - **容器编排**: Kubernetes (k3s)
 - **CI/CD**: Gitea + Gitea Actions
 - **存储**: MinIO (对象存储)
-- **反向代理**: Traefik / Ingress-Nginx
+- **反向代理**: Traefik
 
 ## 目录结构
 
@@ -64,6 +64,7 @@ docker-compose up -d
 
 ## 文档
 
+- [k3s 部署与管理流程](docs/k3s_deploy_step_by_step.md)
 - [架构设计](docs/technical_design/architecture_design.md)
 - [部署指南](docs/setup-guide.md)
 - [API 参考](docs/api/backend_api.md)

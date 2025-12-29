@@ -1,0 +1,79 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: portal-gitea-pvc
+  namespace: hydrosim
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: portal-gitea
+  namespace: hydrosim
+  labels:
+    app: portal-gitea
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: portal-gitea
+  template:
+    metadata:
+      labels:
+        app: portal-gitea
+    spec:
+      containers:
+        - name: gitea
+          image: gitea/gitea:1.21
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3000
+              name: http
+            - containerPort: 22
+              name: ssh
+          env:
+            - name: USER_UID
+              value: "1000"
+            - name: USER_GID
+              value: "1000"
+            - name: GITEA__database__DB_TYPE
+              value: "postgres"
+            - name: GITEA__database__HOST
+              value: "portal-postgres:5432"
+            - name: GITEA__database__NAME
+              value: "gitea"
+            - name: GITEA__database__USER
+              value: "portal"
+            - name: GITEA__database__PASSWD
+              value: "portal"
+          volumeMounts:
+            - name: data
+              mountPath: /data
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: portal-gitea-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: portal-gitea
+  namespace: hydrosim
+  labels:
+    app: portal-gitea
+spec:
+  type: ClusterIP
+  selector:
+    app: portal-gitea
+  ports:
+    - name: http
+      port: 3000
+      targetPort: 3000
+    - name: ssh
+      port: 22
+      targetPort: 22

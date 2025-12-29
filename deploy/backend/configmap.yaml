@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: portal-backend-config
+  namespace: hydrosim
+data:
+  PORTAL_ENV: "production"
+  K8S_IN_CLUSTER: "true"
+  K8S_NAMESPACE: "hydrosim"
+  GITEA_URL: "http://portal-gitea:3000"
+  MINIO_ENDPOINT: "portal-minio:9000"
+  MINIO_BUCKET: "hydrosim-platform"

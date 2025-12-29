@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: students-gd
+  labels:
+    name: students-gd
+    purpose: student-projects
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: students-cd
+  labels:
+    name: students-cd
+    purpose: student-projects

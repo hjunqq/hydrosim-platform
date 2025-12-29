@@ -17,16 +17,20 @@ kubectl create namespace $NAMESPACE --dry-run=client -o yaml | kubectl apply -f 
 echo "2. 应用基础配置..."
 kubectl apply -f ../../deploy/base/
 
+# 部署基础设施
+echo "3. 部署基础设施..."
+kubectl apply -f ../../deploy/infra/
+
 # 部署后端
-echo "3. 部署后端服务..."
+echo "4. 部署后端服务..."
 kubectl apply -f ../../deploy/backend/
 
 # 部署前端
-echo "4. 部署前端服务..."
+echo "5. 部署前端服务..."
 kubectl apply -f ../../deploy/frontend/
 
 # 配置 Ingress
-echo "5. 配置 Ingress..."
+echo "6. 配置 Ingress..."
 kubectl apply -f ../../deploy/ingress/
 
 echo "===================================="

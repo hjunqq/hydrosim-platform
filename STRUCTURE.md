@@ -182,7 +182,7 @@ uvicorn app.main:app --reload
 - **容器**: Docker + Kubernetes (k3s)
 - **CI/CD**: Gitea Actions
 - **存储**: MinIO
-- **反向代理**: Traefik / Nginx
+- **反向代理**: Traefik
 
 ## 📖 相关文档
 
