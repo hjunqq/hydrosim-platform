@@ -1,0 +1,215 @@
+.project-status-page {
+    padding: 24px;
+    background-color: #f5f5f5;
+    min-height: 100vh;
+}
+
+.status-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+.status-header h2 {
+    margin: 0 0 0 12px;
+    font-size: 24px;
+    color: #333;
+}
+
+.status-container {
+    max-width: 900px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.status-section {
+    background: #fff;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.status-section h3 {
+    margin-top: 0;
+    margin-bottom: 16px;
+    font-size: 16px;
+    color: #666;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 8px;
+}
+
+/* 1. Info Grid */
+.info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+}
+
+.info-item {
+    display: flex;
+    flex-direction: column;
+}
+
+.info-item label {
+    font-size: 12px;
+    color: #999;
+    margin-bottom: 4px;
+}
+
+.info-item span,
+.info-item a {
+    font-size: 14px;
+    font-weight: 500;
+    color: #333;
+}
+
+.info-item a {
+    color: #2196F3;
+    text-decoration: none;
+    word-break: break-all;
+    /* Prevent overlap by breaking long URLs */
+}
+
+/* 2. Core Status */
+.core-status-section {
+    padding: 30px 20px;
+}
+
+.status-main {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.status-badge {
+    color: #fff;
+    padding: 8px 16px;
+    border-radius: 4px;
+    font-size: 20px;
+    font-weight: bold;
+    margin-bottom: 12px;
+}
+
+.status-desc {
+    margin: 0 0 16px 0;
+    color: #666;
+    font-size: 15px;
+}
+
+.status-meta {
+    font-size: 13px;
+    color: #999;
+    display: flex;
+    flex-direction: column;
+    /* Changed to column for better multi-line image support */
+    gap: 8px;
+}
+
+.running-image-container {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+.meta-label {
+    white-space: nowrap;
+}
+
+.image-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.image-item {
+    background: #f0f0f0;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 12px;
+    color: #333;
+    overflow-wrap: break-word;
+    /* Ensure long tags break */
+    max-width: 100%;
+}
+
+/* Multi-column layout for small sections */
+.multi-column-section {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+.detail-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px dashed #eee;
+}
+
+/* 5. Access Box */
+.access-box {
+    background: #E8F5E9;
+    padding: 16px;
+    border-radius: 4px;
+    text-align: center;
+}
+
+.access-link {
+    display: block;
+    margin-top: 8px;
+    font-size: 18px;
+    font-weight: bold;
+    color: #4CAF50;
+    text-decoration: none;
+}
+
+/* 6. Action */
+.action-buttons {
+    display: flex;
+    gap: 16px;
+}
+
+/* 7. Diagnostic */
+.diagnostic-box {
+    background: #FFEBEE;
+    border: 1px solid #FFCDD2;
+    padding: 16px;
+    border-radius: 4px;
+    color: #C62828;
+}
+
+.diagnostic-content {
+    font-weight: bold;
+    margin: 8px 0;
+}
+
+.diagnostic-tip {
+    font-size: 13px;
+    margin-top: 12px;
+    color: #D32F2F;
+}
+
+.diagnostic-tip ul {
+    margin: 4px 0 0 20px;
+    padding: 0;
+}
+
+.mult-img-tag {
+    background: #eee;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 10px;
+}
+
+.status-page-error,
+.status-page-loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    font-size: 18px;
+    color: #666;
+}

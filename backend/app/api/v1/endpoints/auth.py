@@ -21,6 +21,7 @@ class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     username: str
+    role: str
 
 
 @router.post("/login", response_model=TokenResponse)
@@ -59,5 +60,6 @@ def login(payload: LoginRequest, db: Session = Depends(deps.get_db)):
     
     return TokenResponse(
         access_token=token,
-        username=teacher.username
+        username=teacher.username,
+        role=teacher.role.value
     )

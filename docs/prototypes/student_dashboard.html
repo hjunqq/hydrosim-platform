@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>项目详情 - Hydrosim 教学管理门户</title>
+    <title>学生工作台 - Hydrosim Platform</title>
     <style>
         :root {
             /* Palette: Arco Design Blue */
@@ -31,6 +31,9 @@
             --bg-white: #FFFFFF;
 
             --border: #E5E6EB;
+
+            --console-bg: #1e1e1e;
+            --console-text: #d4d4d4;
         }
 
         * {
@@ -166,7 +169,7 @@
             color: var(--text-3);
         }
 
-        /* Layout */
+        /* Workspace */
         .workspace {
             flex: 1;
             display: flex;
@@ -174,57 +177,98 @@
             overflow: hidden;
         }
 
-        /* Detail Header */
-        .detail-header {
+        .top-bar {
+            height: 64px;
             background: #fff;
+            border-bottom: 1px solid var(--border);
+            padding: 0 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .page-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--text-1);
+        }
+
+        .content {
+            padding: 24px;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        /* Cards and Layout */
+        .grid-layout {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 24px;
+        }
+
+        .modern-card {
+            background: #fff;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            margin-bottom: 24px;
+        }
+
+        .card-header {
             padding: 16px 24px;
             border-bottom: 1px solid var(--border);
-        }
-
-        .breadcrumb {
-            font-size: 13px;
-            margin-bottom: 12px;
-            color: var(--text-3);
-        }
-
-        .breadcrumb a {
-            color: var(--text-2);
-            text-decoration: none;
-        }
-
-        .breadcrumb a:hover {
-            color: var(--primary-6);
-        }
-
-        .breadcrumb span {
-            margin: 0 8px;
-        }
-
-        .title-row {
+            font-size: 16px;
+            font-weight: 500;
+            color: var(--text-1);
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
 
-        .main-title {
-            font-size: 20px;
-            font-weight: 600;
-            color: var(--text-1);
-            display: flex;
-            align-items: center;
-            gap: 12px;
+        .card-body {
+            padding: 24px;
         }
 
-        .id-badge {
-            font-size: 12px;
+        /* Project Status */
+        .status-hero {
+            display: flex;
+            align-items: flex-start;
+            gap: 24px;
+        }
+
+        .status-icon-large {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            background: var(--success-1);
+            color: var(--success-6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+        }
+
+        .status-details h2 {
+            font-size: 18px;
+            margin-bottom: 8px;
+            color: var(--text-1);
+        }
+
+        .status-meta {
+            color: var(--text-3);
+            font-size: 14px;
+            display: flex;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        .status-tag {
             background: var(--fill-2);
-            color: var(--text-2);
             padding: 2px 8px;
             border-radius: 2px;
             font-family: monospace;
-            font-weight: normal;
         }
 
+        /* Action Buttons */
         .action-group {
             display: flex;
             gap: 12px;
@@ -263,111 +307,83 @@
             color: var(--primary-6);
         }
 
-        .content-scroll {
-            padding: 24px;
-            overflow-y: auto;
-            flex: 1;
+        .btn-danger {
+            background-color: #fff;
+            border-color: var(--border);
+            color: var(--danger-6);
         }
 
-        .detail-grid {
-            display: grid;
-            grid-template-columns: 2fr 1fr;
-            gap: 24px;
-            max-width: 1200px;
-            margin: 0 auto;
+        .btn-danger:hover {
+            background-color: var(--danger-1);
+            border-color: var(--danger-6);
         }
 
-        .modern-card {
-            background: #fff;
-            border-radius: 4px;
-            border: 1px solid var(--border);
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.03);
-            margin-bottom: 24px;
-        }
-
-        .card-header {
-            padding: 16px 24px;
-            border-bottom: 1px solid var(--border);
-            font-size: 16px;
-            font-weight: 500;
-            color: var(--text-1);
-        }
-
-        .card-body {
-            padding: 24px;
-        }
-
-        .desc-list {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 24px;
-        }
-
-        .desc-item {
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-        }
-
-        .desc-label {
+        /* Console */
+        .console-window {
+            background: var(--console-bg);
+            color: var(--console-text);
+            font-family: 'Consolas', 'Monaco', monospace;
             font-size: 13px;
-            color: var(--text-3);
+            padding: 16px;
+            border-radius: 4px;
+            height: 300px;
+            overflow-y: auto;
+            line-height: 1.5;
         }
 
-        .desc-value {
-            font-size: 14px;
-            color: var(--text-1);
-            font-weight: 500;
-            word-break: break-all;
+        .log-time {
+            color: #569cd6;
+            margin-right: 8px;
         }
 
-        .link-val {
+        .log-info {
+            color: #d4d4d4;
+        }
+
+        .log-error {
+            color: #f44336;
+        }
+
+        .log-warn {
+            color: #ffeb3b;
+        }
+
+        /* Resource Gauges Simple */
+        .resource-item {
+            margin-bottom: 20px;
+        }
+
+        .res-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 13px;
+            color: var(--text-2);
+        }
+
+        .res-bar-bg {
+            height: 8px;
+            background: var(--fill-2);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .res-bar-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.5s ease;
+        }
+
+        .text-link {
             color: var(--primary-6);
             text-decoration: none;
             cursor: pointer;
         }
 
-        .link-val:hover {
+        .text-link:hover {
             text-decoration: underline;
         }
 
-        /* Status Center */
-        .status-center {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 200px;
-        }
-
-        .status-ring {
-            width: 80px;
-            height: 80px;
-            border-radius: 50%;
-            border: 4px solid var(--success-1);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 32px;
-            color: var(--success-6);
-            margin-bottom: 16px;
-            background: var(--bg-white);
-        }
-
-        .status-txt {
-            font-weight: 600;
-            font-size: 18px;
-            color: var(--success-6);
-        }
-
-        .status-desc {
-            font-size: 13px;
-            color: var(--text-3);
-            margin-top: 8px;
-            text-align: center;
-        }
-
-        /* Table */
         .table {
             width: 100%;
             border-collapse: collapse;
@@ -375,40 +391,19 @@
 
         .table th {
             text-align: left;
-            padding: 12px 24px;
+            padding: 12px 16px;
             background: var(--fill-1);
             color: var(--text-2);
             font-weight: 500;
-            font-size: 13px;
+            font-size: 12px;
             border-bottom: 1px solid var(--border);
         }
 
         .table td {
-            padding: 14px 24px;
+            padding: 12px 16px;
             border-bottom: 1px solid var(--border);
             font-size: 13px;
             color: var(--text-2);
-            vertical-align: middle;
-        }
-
-        .table tr:hover {
-            background-color: var(--fill-1);
-        }
-
-        .log-status {
-            padding: 2px 8px;
-            border-radius: 2px;
-            font-size: 12px;
-        }
-
-        .log-success {
-            background: var(--success-1);
-            color: var(--success-6);
-        }
-
-        .log-error {
-            background: var(--danger-1);
-            color: var(--danger-6);
         }
     </style>
 <style>
@@ -543,131 +538,160 @@
     <aside class="sidebar" id="sidebar-container">
         <div class="logo-area">
             <div class="logo-icon">H</div>
-            <div class="logo-text">Hydrosim Portal</div>
+            <div class="logo-text">Hydrosim Student</div>
         </div>
         <nav class="nav-menu">
-            <div class="nav-group-title">教学视图 (Teacher)</div>
-            <a href="dashboard.html" class="nav-item">
-                <span class="nav-icon">🏫</span> 教师工作台
+            <div class="nav-group-title">我的工作台</div>
+            <a href="student_dashboard.html" class="nav-item active">
+                <span class="nav-icon">💻</span> 我的项目
             </a>
-            <a href="student_list.html" class="nav-item active">
-                <span class="nav-icon">📋</span> 学生项目列表
+            <a href="#" class="nav-item">
+                <span class="nav-icon">📖</span> 实验文档
             </a>
-
-            <div class="nav-group-title">系统管理</div>
-            <a href="admin_dashboard.html" class="nav-item" style="color: var(--primary-6);">
-                <span class="nav-icon">🛡️</span> 进入管理后台
+            <a href="#" class="nav-item">
+                <span class="nav-icon">❓</span> 帮助中心
             </a>
         </nav>
         <div class="user-profile">
-            <div class="avatar">李</div>
+            <div class="avatar" style="background: #00B42A;">Stu</div>
             <div class="user-info">
-                <div class="user-name">李老师</div>
-                <div class="user-role">管理员</div>
+                <div class="user-name">张三 (20201234)</div>
+                <div class="user-role">学生</div>
             </div>
             <div style="cursor: pointer; color: var(--text-3);">⋮</div>
         </div>
     </aside>
 
     <div class="workspace">
-        <div class="detail-header">
-            <div class="breadcrumb">
-                <a href="student_list.html">项目列表</a> <span>/</span> 详情
-            </div>
-            <div class="title-row">
-                <h1 class="main-title">张三的毕业设计 <span class="id-badge">ID: 2025001</span></h1>
-                <div class="action-group">
-                    <a href="student_dashboard.html?mode=teacher" class="btn btn-primary"
-                        style="text-decoration: none; margin-right: 8px;">Connect to Runtime</a>
-                    <button class="btn btn-default">编辑配置</button>
-                    <button class="btn btn-primary">部署新版本</button>
-                    <button class="btn btn-default" onclick="window.open('#', '_blank')">访问网站</button>
-                </div>
-            </div>
+        <div class="top-bar">
+            <h1 class="page-title">我的项目: fluid-dynamics-vis</h1>
+            <button class="btn btn-default">退出登录</button>
         </div>
 
-        <div class="content-scroll">
-            <div class="detail-grid">
-                <!-- Configuration -->
-                <div class="modern-card">
-                    <div class="card-header">配置信息 (Configuration)</div>
-                    <div class="card-body">
-                        <div class="desc-list">
-                            <div class="desc-item">
-                                <span class="desc-label">学生姓名</span>
-                                <span class="desc-value">张三 (Zhang San)</span>
+        <div class="content">
+            <div class="grid-layout">
+                <!-- Left Column: Main Status & Logs -->
+                <div class="main-column">
+                    <!-- Status Card -->
+                    <div class="modern-card">
+                        <div class="card-body status-hero">
+                            <div class="status-icon-large">
+                                ▶️
                             </div>
-                            <div class="desc-item">
-                                <span class="desc-label">项目类型</span>
-                                <span class="desc-value">毕业设计</span>
+                            <div class="status-details" style="flex: 1;">
+                                <h2>Application Running</h2>
+                                <div class="status-meta">
+                                    <span>Image: <span class="status-tag">hydrosim/fluid-sim:v1.2</span></span>
+                                    <span>Uptime: 2h 15m</span>
+                                    <span>Port: <a href="#" class="text-link">3000</a></span>
+                                </div>
+                                <div class="action-group">
+                                    <button class="btn btn-primary">进入应用</button>
+                                    <button class="btn btn-default">重启</button>
+                                    <button class="btn btn-default">重新部署</button>
+                                    <button class="btn btn-danger">停止</button>
+                                </div>
                             </div>
-                            <div class="desc-item">
-                                <span class="desc-label">Git 仓库地址</span>
-                                <span class="desc-value"><a href="#"
-                                        class="link-val">https://github.com/hydrosim/student-2025001.git</a></span>
+                        </div>
+                    </div>
+
+                    <!-- Logs Card -->
+                    <div class="modern-card">
+                        <div class="card-header">
+                            <span class="card-title">运行日志 (Live Logs)</span>
+                            <div style="font-size: 12px; display: flex; gap: 8px;">
+                                <span style="display: flex; align-items: center;">
+                                    <div
+                                        style="width: 8px; height: 8px; background: #00B42A; border-radius: 50%; margin-right: 4px;">
+                                    </div> Live
+                                </span>
+                                <button class="btn btn-default" style="height: 24px; font-size: 12px;">Clear</button>
+                                <button class="btn btn-default" style="height: 24px; font-size: 12px;">Download</button>
                             </div>
-                            <div class="desc-item">
-                                <span class="desc-label">分配域名</span>
-                                <span class="desc-value">zhangsan.hydrosim.cloud</span>
-                            </div>
-                            <div class="desc-item">
-                                <span class="desc-label">当前镜像 Tag</span>
-                                <span class="desc-value"
-                                    style="font-family: monospace; background: var(--fill-2); padding: 2px 6px; border-radius: 2px;">registry.hydrosim.cn/gd/s2025_001:v1</span>
-                            </div>
-                            <div class="desc-item">
-                                <span class="desc-label">容器端口</span>
-                                <span class="desc-value">80 (http)</span>
-                            </div>
+                        </div>
+                        <div class="console-window">
+                            <div><span class="log-time">[10:00:01]</span> <span class="log-info">Starting application
+                                    server on port 3000...</span></div>
+                            <div><span class="log-time">[10:00:02]</span> <span class="log-info">Combined database
+                                    connection established.</span></div>
+                            <div><span class="log-time">[10:00:05]</span> <span class="log-warn">Warning: fluctuating
+                                    memory usage detected in initialization.</span></div>
+                            <div><span class="log-time">[10:00:06]</span> <span class="log-info">Simulation engine
+                                    ready. v1.2.4</span></div>
+                            <div><span class="log-time">[10:05:23]</span> <span class="log-info">GET
+                                    /api/simulation/start 200 OK - 45ms</span></div>
+                            <div><span class="log-time">[10:15:00]</span> <span class="log-info">Auto-saving snapshot:
+                                    snap_01.json</span></div>
+                            <div><span class="log-time">[12:15:00]</span> <span class="log-info">Keep-alive heartbeat
+                                    received.</span></div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Status -->
-                <div class="modern-card">
-                    <div class="card-header">当前状态 (Health)</div>
-                    <div class="card-body">
-                        <div class="status-center">
-                            <div class="status-ring">✔</div>
-                            <div class="status-txt">RUNNING</div>
-                            <div class="status-desc">服务运行正常<br>已持续运行 4 天 12 小时</div>
+                <!-- Right Column: Resources & History -->
+                <div class="side-column">
+                    <!-- Resources -->
+                    <div class="modern-card">
+                        <div class="card-header">
+                            <span class="card-title">资源监控</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="resource-item">
+                                <div class="res-label">
+                                    <span>CPU Usage</span>
+                                    <span style="font-weight: bold;">0.5 / 1.0 Core</span>
+                                </div>
+                                <div class="res-bar-bg">
+                                    <div class="res-bar-fill" style="width: 50%; background: var(--primary-6);"></div>
+                                </div>
+                            </div>
+                            <div class="resource-item">
+                                <div class="res-label">
+                                    <span>Memory Usage</span>
+                                    <span style="font-weight: bold;">450 / 512 MB</span>
+                                </div>
+                                <div class="res-bar-bg">
+                                    <div class="res-bar-fill" style="width: 88%; background: var(--warning-6);"></div>
+                                </div>
+                            </div>
+                            <div style="margin-top: 16px; font-size: 12px; color: var(--text-3); text-align: center;">
+                                Quota Limit: 1.0 Core, 1024 MB
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                <!-- History -->
-                <div class="modern-card" style="grid-column: 1 / -1;">
-                    <div class="card-header">部署历史 (History)</div>
-                    <table class="table">
-                        <thead>
-                            <tr>
-                                <th>部署时间</th>
-                                <th>版本 Tag</th>
-                                <th>耗时</th>
-                                <th>触发人</th>
-                                <th>状态</th>
-                                <th>操作</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td>2024-12-24 10:30:45</td>
-                                <td style="font-family: monospace;">registry.hydrosim.cn/gd/s2025_001:v1</td>
-                                <td>45s</td>
-                                <td>李老师</td>
-                                <td><span class="log-status log-success">成功</span></td>
-                                <td><a href="#" class="link-val">查看日志</a></td>
-                            </tr>
-                            <tr>
-                                <td>2024-12-23 15:45:12</td>
-                                <td style="font-family: monospace;">registry.hydrosim.cn/gd/s2025_001:v2</td>
-                                <td>12s</td>
-                                <td>系统自动</td>
-                                <td><span class="log-status log-error">失败</span></td>
-                                <td><a href="#" class="link-val">查看日志</a></td>
-                            </tr>
-                        </tbody>
-                    </table>
+                    <!-- History -->
+                    <div class="modern-card">
+                        <div class="card-header">
+                            <span class="card-title">最近操作</span>
+                        </div>
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>操作</th>
+                                    <th>状态</th>
+                                    <th>时间</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Start</td>
+                                    <td style="color: var(--success-6);">Success</td>
+                                    <td>2h ago</td>
+                                </tr>
+                                <tr>
+                                    <td>Deploy</td>
+                                    <td style="color: var(--success-6);">Success</td>
+                                    <td>1d ago</td>
+                                </tr>
+                                <tr>
+                                    <td>Stop</td>
+                                    <td style="color: var(--text-3);">Done</td>
+                                    <td>1d ago</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
@@ -675,18 +699,15 @@
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const urlParams = new URLSearchParams(window.location.search);
-            const mode = urlParams.get('mode') || 'teacher'; // Default to teacher
+            const mode = urlParams.get('mode');
             const sidebar = document.getElementById('sidebar-container');
-            const breadcrumbText = document.querySelector('.top-bar'); // We might need to target specific breadcrumb elements if they exist, or just leave as is if generic. 
-            // Looking at previous student_detail view, top bar has "Student Project Management / Detail" (implied, I don't see exact breadcrumb HTML in previous snippets, assuming standard).
-            // Wait, looking at file content `student_detail.html` lines 180-190 (mapped from other files), it usually has a logic.
-            // Let's assume the sidebars are the critical part.
+            const topActions = document.querySelector('.top-bar');
 
-            // Update Runtime Link
-            const runtimeBtn = document.querySelector('a[href*="student_dashboard.html"]');
-            if (runtimeBtn) {
-                runtimeBtn.href = `student_dashboard.html?mode=${mode}`;
-            }
+            // Find where to append the Return button or replace the Logout button
+            // The top bar has: <h1...> <button...Logout>
+            // We want to REPLACE the Logout button or APPEND?
+            // "Return" suggests jumping back.
+            // If Admin/Teacher, they usually don't "Logout" from the student view, they "Return".
 
             if (mode === 'admin') {
                 // Inject Admin Sidebar
@@ -726,8 +747,15 @@
                         </div>
                     </div>
                 `;
-            } else {
-                // Inject Teacher Sidebar (Default)
+
+                // Add Return Button
+                const btnContainer = document.querySelector('.top-bar button');
+                if (btnContainer) {
+                    btnContainer.outerHTML = `<button class="btn btn-default" onclick="location.href='admin_dashboard.html'">Return to Dashboard</button>`;
+                }
+
+            } else if (mode === 'teacher') {
+                // Inject Teacher Sidebar
                 sidebar.innerHTML = `
                     <div class="logo-area">
                         <div class="logo-icon">H</div>
@@ -756,6 +784,12 @@
                         <div style="cursor: pointer; color: var(--text-3);">⋮</div>
                     </div>
                 `;
+
+                // Add Return Button
+                const btnContainer = document.querySelector('.top-bar button');
+                if (btnContainer) {
+                    btnContainer.outerHTML = `<button class="btn btn-default" onclick="location.href='student_list.html'">Return to List</button>`;
+                }
             }
         });
     </script>

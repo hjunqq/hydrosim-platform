@@ -7,6 +7,11 @@ class DeploymentStatus(str, Enum):
     pending = "pending"
     running = "running"
     failed = "failed"
+    deploying = "deploying"
+    not_deployed = "not_deployed"
+    stopped = "stopped"
+    error = "error"
+    unknown = "unknown"
 
 class Deployment(Base):
     __tablename__ = "deployments"

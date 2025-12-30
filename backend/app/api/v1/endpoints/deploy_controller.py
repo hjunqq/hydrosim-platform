@@ -184,6 +184,56 @@ def trigger_deploy(student_code: str, req: DeployRequest):
 
 from app.services.deployment_monitor import get_deployment_status
 
+@router.delete("/{student_code}")
+def delete_deployment(
+    student_code: str, 
+    project_type: str,
+    # In a real app, inject user and check permissions here
+    # current_user: models.Teacher = Depends(get_current_user)
+):
+    """
+    Delete student deployment resources (Deployment, Service, Ingress).
+    """
+    if project_type not in NAMESPACE_MAP:
+        raise HTTPException(status_code=400, detail="Invalid project_type")
+        
+    namespace = NAMESPACE_MAP[project_type]
+    deployment_name = f"student-{student_code}"
+    
+    deleted_resources = []
+    errors = []
+
+    # 1. Delete Ingress
+    try:
+        networking_v1.delete_namespaced_ingress(name=deployment_name, namespace=namespace)
+        deleted_resources.append("Ingress")
+    except ApiException as e:
+        if e.status != 404: errors.append(f"Ingress: {e.reason}")
+
+    # 2. Delete Service
+    try:
+        core_v1.delete_namespaced_service(name=deployment_name, namespace=namespace)
+        deleted_resources.append("Service")
+    except ApiException as e:
+        if e.status != 404: errors.append(f"Service: {e.reason}")
+
+    # 3. Delete Deployment
+    try:
+        apps_v1.delete_namespaced_deployment(name=deployment_name, namespace=namespace)
+        deleted_resources.append("Deployment")
+    except ApiException as e:
+        if e.status != 404: errors.append(f"Deployment: {e.reason}")
+
+    if not deleted_resources and not errors:
+        return {"status": "not_found", "message": "No resources found to delete"}
+
+    return {
+        "status": "success",
+        "deleted": deleted_resources,
+        "errors": errors,
+        "message": f"Deleted: {', '.join(deleted_resources)}"
+    }
+
 @router.get("/{student_code}")
 def query_deploy_status(student_code: str, project_type: str):
     """

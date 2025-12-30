@@ -11,7 +11,9 @@ class StudentBase(BaseModel):
     name: str
     project_type: ProjectType
     git_repo_url: Optional[str] = None
+    expected_image_name: Optional[str] = None
     domain: Optional[str] = None
+    teacher_id: Optional[int] = None
 
 
 class StudentCreate(StudentBase):
@@ -23,12 +25,19 @@ class StudentUpdate(BaseModel):
     name: Optional[str] = None
     project_type: Optional[ProjectType] = None
     git_repo_url: Optional[str] = None
+    expected_image_name: Optional[str] = None
     domain: Optional[str] = None
+    teacher_id: Optional[int] = None
 
 
 class Student(StudentBase):
     id: int
     created_at: datetime
+    
+    # Injected fields for Real-time status
+    latest_deploy_status: Optional[str] = None
+    latest_deploy_message: Optional[str] = None
+    running_image: Optional[str] = None
 
     class Config:
         from_attributes = True

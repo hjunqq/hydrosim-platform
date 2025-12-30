@@ -1,0 +1,232 @@
+/* RegistryPage.css */
+
+.registry-page-container {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.registry-header {
+    margin-bottom: 0;
+}
+
+/* DataGrid Wrapper */
+.registry-list-section {
+    position: relative;
+    flex-shrink: 0;
+    overflow: hidden;
+}
+
+.registry-hint {
+    padding: 12px 16px;
+    border-top: 1px solid var(--border-color);
+    color: var(--text-3);
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--fill-0);
+}
+
+.registry-hint i {
+    color: var(--primary-6);
+}
+
+/* Browser Layout */
+.repo-browser-card {
+    background: var(--bg-white);
+    border-radius: 14px;
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-2);
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-height: 500px;
+}
+
+.browser-header {
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: linear-gradient(180deg, #FFFFFF 0%, #FAFCFE 100%);
+}
+
+.browser-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-1);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.browser-title i {
+    color: var(--primary-6);
+}
+
+.browser-body {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+/* Left Sidebar: TreeView */
+.browser-sidebar {
+    width: 280px;
+    border-right: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    background: var(--fill-0);
+}
+
+.sidebar-search {
+    padding: 16px;
+    border-bottom: 1px solid var(--border-color);
+    background: transparent;
+}
+
+.sidebar-label {
+    font-size: 12px;
+    color: var(--text-3);
+    margin-bottom: 8px;
+}
+
+.sidebar-tree-container {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 0;
+}
+
+/* Custom TreeView Styles via global overrides or specific class */
+.dx-treeview-item {
+    font-size: 13px !important;
+    color: var(--text-1) !important;
+}
+
+.dx-treeview-item.dx-state-selected {
+    background-color: var(--primary-1) !important;
+    color: var(--primary-6) !important;
+}
+
+/* Right Content: Tags */
+.browser-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+    overflow: hidden;
+}
+
+.tags-header {
+    padding: 12px 24px;
+    border-bottom: 1px solid var(--border-color);
+    background: var(--fill-0);
+    color: var(--text-2);
+    font-size: 13px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.tags-grid-container {
+    flex: 1;
+    padding: 24px;
+    overflow-y: auto;
+}
+
+.tags-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 16px;
+}
+
+/* Enhanced Tag Card */
+.tag-card {
+    background: var(--bg-white);
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    padding: 18px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.tag-card:hover {
+    border-color: var(--primary-5);
+    box-shadow: 0 12px 24px rgba(11, 31, 42, 0.12);
+    transform: translateY(-2px);
+}
+
+.tag-header .tag-name {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-1);
+    word-break: break-all;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.tag-header .tag-name i {
+    color: var(--primary-6);
+}
+
+.tag-meta {
+    font-size: 12px;
+    color: var(--text-3);
+    margin-top: 4px;
+}
+
+.tag-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: auto;
+}
+
+.action-btn {
+    flex: 1;
+    height: 36px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 1px solid transparent;
+}
+
+.btn-deploy {
+    background: var(--primary-1);
+    color: var(--primary-6);
+    border-color: transparent;
+}
+
+.btn-deploy:hover {
+    background: var(--primary-6);
+    color: #fff;
+}
+
+.btn-delete {
+    background: rgba(229, 72, 77, 0.12);
+    color: var(--danger-6);
+    border-color: transparent;
+}
+
+.btn-delete:hover {
+    background: var(--danger-6);
+    color: #fff;
+}
+
+/* Empty State */
+.empty-state {
+    min-height: 280px;
+}

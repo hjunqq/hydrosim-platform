@@ -6,6 +6,7 @@ export interface Student {
     name: string
     project_type: 'gd' | 'cd'
     git_repo_url?: string
+    expected_image_name?: string
     domain?: string
     created_at: string
 }
@@ -22,6 +23,7 @@ export interface CreateStudentParams {
     name: string
     project_type: 'gd' | 'cd'
     git_repo_url?: string
+    expected_image_name?: string
 }
 
 export const studentsApi = {

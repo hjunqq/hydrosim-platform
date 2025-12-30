@@ -32,7 +32,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 setUser(JSON.parse(storedUser))
             } catch (e) {
                 console.error("Failed to parse user from storage", e);
-                logout();
+                localStorage.removeItem('token')
+                localStorage.removeItem('user')
             }
         }
         setIsLoading(false)
@@ -40,13 +41,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     const login = async (params: LoginParams) => {
         try {
-            // Axios response interceptor returns 'response.data', so result is the User object directly?
-            // Wait, request.ts returns response.data. 
-            // authApi.login returns Promise<unknown> because of that override.
-            // Let's assume request.ts returns the actual JSON payload.
-            const res = await authApi.login(params) as unknown as LoginResponse
-            const { access_token, username } = res
-            const userObj = { username }
+            // request.ts returns the response.data object directly
+            const res = await authApi.login(params) as unknown as LoginResponse & { role: string }
+            const { access_token, username, role } = res
+            const userObj = { username, role }
 
             setToken(access_token)
             setUser(userObj)

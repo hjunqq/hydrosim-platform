@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import DataGrid, { Column, FilterRow, Paging, SearchPanel } from 'devextreme-react/data-grid'; // Added DataGrid imports
 import { Popup } from 'devextreme-react/popup'
 import Form, { Item as FormItem, Label, RequiredRule } from 'devextreme-react/form'
 import Button from 'devextreme-react/button'
@@ -30,7 +31,8 @@ const StudentsPage = () => {
         student_code: '',
         name: '',
         project_type: 'gd',
-        git_repo_url: ''
+        git_repo_url: '',
+        expected_image_name: ''
     })
     const [deployForm, setDeployForm] = useState({
         image: '',
@@ -66,7 +68,8 @@ const StudentsPage = () => {
             notify('学生项目创建成功', 'success', 2000)
             setIsCreatePopupVisible(false)
             loadData()
-            setStudentForm({ student_code: '', name: '', project_type: 'gd', git_repo_url: '' })
+            loadData()
+            setStudentForm({ student_code: '', name: '', project_type: 'gd', git_repo_url: '', expected_image_name: '' })
         } catch (err: any) {
             notify(err.response?.data?.detail || '创建失败', 'error', 3000)
         }
@@ -142,141 +145,148 @@ const StudentsPage = () => {
             {/* Content */}
             <div className="content-scroll">
                 <div className="modern-card">
-                    {/* Filter Bar */}
-                    <div style={{
-                        padding: '16px 24px',
-                        borderBottom: '1px solid var(--border-color)',
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center'
-                    }}>
-                        <div style={{ display: 'flex', gap: 12 }}>
-                            <input
-                                type="text"
-                                placeholder="搜索学生姓名、学号或项目ID"
-                                value={searchText}
-                                onChange={(e) => setSearchText(e.target.value)}
-                                style={{
-                                    height: 32, width: 240, padding: '0 12px',
-                                    border: '1px solid var(--border-color)', borderRadius: 2,
-                                    fontSize: 13, outline: 'none'
-                                }}
-                            />
-                            <select
-                                value={typeFilter}
-                                onChange={(e) => setTypeFilter(e.target.value as any)}
-                                style={{
-                                    height: 32, width: 120, padding: '0 8px',
-                                    border: '1px solid var(--border-color)', borderRadius: 2,
-                                    fontSize: 13, color: 'var(--text-2)'
-                                }}
-                            >
-                                <option value="all">所有类型</option>
-                                <option value="gd">毕业设计</option>
-                                <option value="cd">课程设计</option>
-                            </select>
-                            <select
-                                value={statusFilter}
-                                onChange={(e) => setStatusFilter(e.target.value as any)}
-                                style={{
-                                    height: 32, width: 120, padding: '0 8px',
-                                    border: '1px solid var(--border-color)', borderRadius: 2,
-                                    fontSize: 13, color: 'var(--text-2)'
-                                }}
-                            >
-                                <option value="all">所有状态</option>
-                                <option value="running">运行中</option>
-                                <option value="failed">异常</option>
-                                <option value="pending">待部署</option>
-                            </select>
-                        </div>
-                        <div style={{ display: 'flex', gap: 12 }}>
-                            <button className="btn btn-default" onClick={loadData}>刷新</button>
-                            <button className="btn btn-primary" onClick={() => setIsCreatePopupVisible(true)}>+ 新建项目</button>
-                        </div>
-                    </div>
+                    <DataGrid
+                        dataSource={students}
+                        showBorders={false}
+                        focusedRowEnabled={true}
+                        columnAutoWidth={true}
+                        keyExpr="id"
+                        rowAlternationEnabled={true}
+                    >
+                        <SearchPanel visible={true} width={300} placeholder="搜索项目..." />
+                        <FilterRow visible={true} />
+                        <Paging defaultPageSize={10} />
 
-                    {/* Table */}
-                    <table className="data-table">
-                        <thead>
-                            <tr>
-                                <th style={{ width: 200 }}>学生信息</th>
-                                <th style={{ width: 120 }}>项目类型</th>
-                                <th>访问域名 (Domain)</th>
-                                <th style={{ width: 140 }}>当前状态</th>
-                                <th style={{ width: 180 }}>更新时间</th>
-                                <th style={{ width: 180, textAlign: 'right' }}>操作</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {filteredStudents.map((student) => (
-                                <tr key={student.id}>
-                                    <td>
-                                        <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                            <span style={{ fontWeight: 500 }}>{student.name}</span>
-                                            <span style={{ fontSize: 12, color: 'var(--text-3)', fontFamily: 'monospace' }}>{student.student_code}</span>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <span className={`tag ${student.project_type === 'gd' ? 'tag-blue' : 'tag-gray'}`}>
-                                            {student.project_type === 'gd' ? '毕业设计' : '课程设计'}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        {student.domain ? (
-                                            <a className="link-text" href={`http://${student.domain}`} target="_blank" rel="noreferrer">
-                                                {student.domain}
-                                            </a>
-                                        ) : (
-                                            <span style={{ color: 'var(--text-4)' }}>-</span>
-                                        )}
-                                    </td>
-                                    <td>
-                                        <span className={`status-badge ${getStatusClass(student)}`}>
-                                            <span className="dot"></span>
-                                            {getStatusText(student)}
-                                        </span>
-                                    </td>
-                                    <td style={{ color: 'var(--text-3)', fontSize: 13 }}>
-                                        {student.created_at ? new Date(student.created_at).toLocaleString('zh-CN') : '-'}
-                                    </td>
-                                    <td>
-                                        <div style={{ display: 'flex', gap: 16, justifyContent: 'flex-end' }}>
-                                            <a className="link-text" onClick={() => navigate(`/students/${student.id}`)}>详情</a>
-                                            <a className="link-text" onClick={() => openDeployPopup(student)}>
-                                                {student.domain ? '重新部署' : '立即部署'}
-                                            </a>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))}
-                            {filteredStudents.length === 0 && (
-                                <tr>
-                                    <td colSpan={6} style={{ textAlign: 'center', padding: 40, color: 'var(--text-3)' }}>
-                                        暂无数据
-                                    </td>
-                                </tr>
+                        <Column dataField="student_code" caption="学号" width={100} />
+                        <Column dataField="name" caption="姓名" width={100} />
+                        <Column
+                            dataField="project_type"
+                            caption="类型"
+                            width={80}
+                            cellRender={(d) => (
+                                <span className={`tag ${d.value === 'gd' ? 'tag-blue' : 'tag-gray'}`}>
+                                    {d.value === 'gd' ? '毕设' : '课设'}
+                                </span>
                             )}
-                        </tbody>
-                    </table>
+                        />
 
-                    {/* Simple Pagination */}
-                    <div style={{
-                        padding: '16px 24px',
-                        borderTop: '1px solid var(--border-color)',
-                        display: 'flex',
-                        justifyContent: 'flex-end',
-                        gap: 8,
-                        fontSize: 13,
-                        color: 'var(--text-2)'
-                    }}>
-                        共 {filteredStudents.length} 条记录
-                    </div>
+                        <Column
+                            caption="Git仓库"
+                            width={80}
+                            alignment="center"
+                            cellRender={(data) => {
+                                const url = data.data.git_repo_url;
+                                if (!url) return <span style={{ color: '#ccc' }}>-</span>;
+                                return (
+                                    <a href={url} target="_blank" rel="noopener noreferrer" title="访问代码仓库">
+                                        <i className="dx-icon-globe" style={{ fontSize: 18, color: '#1890ff' }}></i>
+                                    </a>
+                                );
+                            }}
+                        />
+
+                        <Column
+                            caption="门户"
+                            width={80}
+                            alignment="center"
+                            cellRender={(data) => {
+                                const domain = data.data.domain;
+                                if (!domain) return <span style={{ color: '#ccc' }}>-</span>;
+                                const url = domain.startsWith('http') ? domain : `http://${domain}`;
+                                return (
+                                    <a href={url} target="_blank" rel="noopener noreferrer" title="访问部署门户">
+                                        <i className="dx-icon-home" style={{ fontSize: 18, color: '#52c41a' }}></i>
+                                    </a>
+                                );
+                            }}
+                        />
+
+                        <Column
+                            dataField="running_image"
+                            caption="当前运行镜像"
+                            width={200}
+                            cellRender={(data) => (
+                                <div style={{ fontSize: 12, color: '#666', lineHeight: '1.4' }}>
+                                    {data.value ? data.value.split('\n').map((img: string, idx: number) => (
+                                        <div key={idx} style={{ marginBottom: 2 }}>{img}</div>
+                                    )) : '-'}
+                                </div>
+                            )}
+                        />
+
+                        <Column
+                            dataField="latest_deploy_status"
+                            caption="状态"
+                            width={100}
+                            cellRender={(cellData) => {
+                                const status = cellData.value;
+                                let badgeClass = 'st-default';
+                                let statusText = '未部署';
+                                let color = '#d9d9d9';
+
+                                switch (status) {
+                                    case 'running':
+                                    case 'success':
+                                        badgeClass = 'st-success';
+                                        statusText = '运行中';
+                                        color = '#52c41a';
+                                        break;
+                                    case 'deploying':
+                                    case 'pending':
+                                        badgeClass = 'st-waiting';
+                                        statusText = '部署中';
+                                        color = '#1890ff';
+                                        break;
+                                    case 'error':
+                                    case 'failed':
+                                        badgeClass = 'st-danger';
+                                        statusText = '异常';
+                                        color = '#ff4d4f';
+                                        break;
+                                }
+
+                                return (
+                                    <span className={`status-badge ${badgeClass}`}>
+                                        <span className="dot" style={{ background: color }}></span>
+                                        {statusText}
+                                    </span>
+                                );
+                            }}
+                        />
+                        <Column
+                            caption="操作"
+                            width={180}
+                            alignment="center"
+                            cellRender={(data) => (
+                                <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
+                                    <Button
+                                        text="监控"
+                                        type="normal"
+                                        stylingMode="outlined"
+                                        onClick={(e) => {
+                                            e.event?.stopPropagation();
+                                            navigate(`/projects/${data.data.id}/status`);
+                                        }}
+                                        height={24}
+                                        style={{ fontSize: 12 }}
+                                    />
+                                    <Button
+                                        text="部署"
+                                        type="default"
+                                        stylingMode="outlined"
+                                        onClick={() => openDeployPopup(data.data)}
+                                        height={24}
+                                        style={{ fontSize: 12 }}
+                                    />
+                                </div>
+                            )}
+                        />
+                    </DataGrid>
                 </div>
             </div>
 
             {/* Create Project Modal */}
-            <Popup
+            < Popup
                 visible={isCreatePopupVisible}
                 onHiding={() => setIsCreatePopupVisible(false)}
                 title="新建学生项目"
@@ -310,16 +320,19 @@ const StudentsPage = () => {
                         <FormItem dataField="git_repo_url" editorType="dxTextBox">
                             <Label text="Git 仓库地址 (可选)" />
                         </FormItem>
+                        <FormItem dataField="expected_image_name" editorType="dxTextBox">
+                            <Label text="预期镜像关键词 (可选)" />
+                        </FormItem>
                     </Form>
                     <div style={{ marginTop: 24, display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
                         <Button text="取消" onClick={() => setIsCreatePopupVisible(false)} type="normal" />
                         <Button text="创建项目" useSubmitBehavior={true} type="default" />
                     </div>
                 </form>
-            </Popup>
+            </Popup >
 
             {/* Deploy Config Modal */}
-            <Popup
+            < Popup
                 visible={isDeployConfigVisible}
                 onHiding={() => setIsDeployConfigVisible(false)}
                 title="部署项目"
@@ -363,10 +376,10 @@ const StudentsPage = () => {
                         <Button text="开始部署" useSubmitBehavior={true} type="default" />
                     </div>
                 </form>
-            </Popup>
+            </Popup >
 
             {/* Deployment Status Modal */}
-            <DeploymentStatusModal
+            < DeploymentStatusModal
                 visible={isDeployStatusVisible}
                 onClose={() => setIsDeployStatusVisible(false)}
                 studentName={selectedStudent?.name}

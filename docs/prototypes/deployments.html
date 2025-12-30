@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>项目列表 - Hydrosim 教学管理门户</title>
+    <title>部署记录 - Hydrosim 教学管理门户</title>
     <style>
         :root {
             /* Palette: Arco Design Blue */
@@ -48,7 +48,7 @@
             overflow: hidden;
         }
 
-        /* Sidebar similar to admin_dashboard */
+        /* Sidebar Standard */
         .sidebar {
             width: 240px;
             background: #fff;
@@ -166,7 +166,7 @@
             color: var(--text-3);
         }
 
-        /* Layout */
+        /* Workspace */
         .workspace {
             flex: 1;
             display: flex;
@@ -196,27 +196,20 @@
             flex: 1;
         }
 
-        .list-container {
+        /* Deployment List Styles */
+        .modern-card {
             background: #fff;
             border-radius: 4px;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.03);
             border: 1px solid var(--border);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.03);
         }
 
-        /* Filter Bar */
         .filter-bar {
             padding: 16px 20px;
             display: flex;
-            justify-content: space-between;
-            align-items: center;
+            gap: 12px;
             border-bottom: 1px solid var(--border);
-            flex-wrap: wrap;
-            gap: 12px;
-        }
-
-        .filter-group {
-            display: flex;
-            gap: 12px;
+            align-items: center;
         }
 
         .input,
@@ -228,48 +221,9 @@
             outline: none;
             color: var(--text-2);
             font-size: 14px;
-            background: #fff;
+            min-width: 140px;
         }
 
-        .input:focus,
-        .select:focus {
-            border-color: var(--primary-6);
-        }
-
-        .btn {
-            height: 32px;
-            padding: 0 16px;
-            border-radius: 2px;
-            cursor: pointer;
-            font-size: 14px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            border: 1px solid transparent;
-            transition: all 0.2s;
-        }
-
-        .btn-primary {
-            background-color: var(--primary-6);
-            color: #fff;
-        }
-
-        .btn-primary:hover {
-            background-color: var(--primary-5);
-        }
-
-        .btn-default {
-            background-color: #fff;
-            border-color: var(--border);
-            color: var(--text-2);
-        }
-
-        .btn-default:hover {
-            border-color: var(--primary-6);
-            color: var(--primary-6);
-        }
-
-        /* Table */
         .table {
             width: 100%;
             border-collapse: collapse;
@@ -277,7 +231,7 @@
 
         .table th {
             text-align: left;
-            padding: 12px 20px;
+            padding: 12px 24px;
             background: var(--fill-1);
             color: var(--text-2);
             font-weight: 500;
@@ -286,7 +240,7 @@
         }
 
         .table td {
-            padding: 14px 20px;
+            padding: 14px 24px;
             border-bottom: 1px solid var(--border);
             font-size: 14px;
             color: var(--text-2);
@@ -297,7 +251,6 @@
             background-color: var(--fill-1);
         }
 
-        /* Badges & Tags */
         .status-badge {
             display: inline-flex;
             align-items: center;
@@ -316,38 +269,9 @@
             color: var(--danger-6);
         }
 
-        .st-warning {
-            background: var(--warning-1);
-            color: var(--warning-6);
-        }
-
-        .st-gray {
-            background: var(--fill-2);
-            color: var(--text-3);
-        }
-
-        .dot {
-            width: 6px;
-            height: 6px;
-            border-radius: 50%;
-            margin-right: 6px;
-            background: currentColor;
-        }
-
-        .tag {
-            padding: 2px 8px;
-            border-radius: 2px;
-            font-size: 12px;
-        }
-
-        .tag-blue {
+        .st-process {
             background: var(--primary-1);
             color: var(--primary-6);
-        }
-
-        .tag-gray {
-            background: var(--fill-1);
-            color: var(--text-2);
         }
 
         .text-link {
@@ -356,17 +280,6 @@
             cursor: pointer;
         }
 
-        .text-link:hover {
-            text-decoration: underline;
-        }
-
-        .user-code {
-            font-size: 12px;
-            color: var(--text-3);
-            font-family: monospace;
-        }
-
-        /* Pagination */
         .pagination {
             padding: 16px 24px;
             display: flex;
@@ -386,11 +299,6 @@
             cursor: pointer;
             color: var(--text-2);
             font-size: 13px;
-        }
-
-        .page-item:hover {
-            border-color: var(--primary-6);
-            color: var(--primary-6);
         }
 
         .page-item.active {
@@ -534,17 +442,26 @@
             <div class="logo-text">Hydrosim Portal</div>
         </div>
         <nav class="nav-menu">
+            <div class="nav-group-title">管理视图 (Admin)</div>
+            <a href="admin_dashboard.html" class="nav-item">
+                <span class="nav-icon">🎓</span> 全局项目
+            </a>
+            <a href="registry.html" class="nav-item">
+                <span class="nav-icon">📦</span> 镜像仓库
+            </a>
+            <a href="admin_dashboard.html?view=monitoring" class="nav-item">
+                <span class="nav-icon">⚡</span> 资源监控
+            </a>
+            <a href="deployments.html" class="nav-item active">
+                <span class="nav-icon">🚀</span> 部署记录
+            </a>
+
             <div class="nav-group-title">教学视图 (Teacher)</div>
             <a href="dashboard.html" class="nav-item">
                 <span class="nav-icon">🏫</span> 教师工作台
             </a>
-            <a href="student_list.html" class="nav-item active">
+            <a href="student_list.html" class="nav-item">
                 <span class="nav-icon">📋</span> 学生项目列表
-            </a>
-
-            <div class="nav-group-title">系统管理</div>
-            <a href="admin_dashboard.html" class="nav-item" style="color: var(--primary-6);">
-                <span class="nav-icon">🛡️</span> 进入管理后台
             </a>
         </nav>
         <div class="user-profile">
@@ -559,108 +476,82 @@
 
     <div class="workspace">
         <div class="top-bar">
-            <h1 class="page-title">学生项目列表</h1>
-            <div style="font-size: 13px; color: var(--text-3);">共 42 个项目</div>
+            <h1 class="page-title">部署记录 (Deployments)</h1>
+            <div style="color: var(--text-3); font-size: 13px;">查看最近 7 天的部署活动</div>
         </div>
 
         <div class="content">
-            <div class="list-container">
-                <!-- Filter -->
+            <div class="modern-card">
                 <div class="filter-bar">
-                    <div class="filter-group">
-                        <input type="text" class="input" placeholder="搜索学生姓名、学号或项目ID" style="width: 240px;">
-                        <select class="select">
-                            <option>所有类型</option>
-                            <option>毕业设计</option>
-                            <option>课程设计</option>
-                        </select>
-                        <select class="select">
-                            <option>所有状态</option>
-                            <option>运行中</option>
-                            <option>异常</option>
-                            <option>待部署</option>
-                        </select>
-                    </div>
-                    <div class="filter-group">
-                        <button class="btn btn-default">🔄 刷新</button>
-                        <button class="btn btn-primary" onclick="alert('Open Create Modal')">+ 新建项目</button>
-                    </div>
+                    <input type="text" class="input" placeholder="搜索项目 ID 或名称...">
+                    <select class="select">
+                        <option>所有状态</option>
+                        <option>成功 (Success)</option>
+                        <option>失败 (Failed)</option>
+                        <option>进行中 (Processing)</option>
+                    </select>
+                    <div style="flex: 1;"></div>
+                    <button class="select"
+                        style="background: var(--primary-6); color: #fff; border: none; cursor: pointer;">查询</button>
                 </div>
 
-                <!-- Table -->
                 <table class="table">
                     <thead>
                         <tr>
-                            <th width="200">学生信息</th>
-                            <th width="120">项目类型</th>
-                            <th>访问域名 (Domain)</th>
-                            <th width="140">当前状态</th>
-                            <th width="180">更新时间</th>
-                            <th width="180" style="text-align: right;">操作</th>
+                            <th>开始时间</th>
+                            <th>项目名称</th>
+                            <th>版本 Tag</th>
+                            <th>触发人</th>
+                            <th>耗时</th>
+                            <th>状态</th>
+                            <th>操作</th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr>
-                            <td>
-                                <div>
-                                    <div style="font-weight: 500;">张三</div>
-                                    <span class="user-code">2025001</span>
-                                </div>
-                            </td>
-                            <td><span class="tag tag-blue">毕业设计</span></td>
-                            <td><a class="text-link" href="#" target="_blank">zhangsan.hydrosim.cloud</a></td>
-                            <td><span class="status-badge st-success"><span class="dot"></span>运行中</span></td>
-                            <td style="color: var(--text-3); font-size: 13px;">2024-12-24 10:30</td>
-                            <td style="text-align: right;">
-                                <a class="text-link" href="student_dashboard.html?mode=teacher"
-                                    style="margin-right: 12px; font-weight: bold; color: var(--success-6);">监控</a>
-                                <a class="text-link" href="student_detail.html?mode=teacher"
-                                    style="margin-right: 12px;">详情</a>
-                                <a class="text-link" href="#">重新部署</a>
-                            </td>
+                            <td>2024-12-30 09:12:45</td>
+                            <td>张三 / fluid-vis-app</td>
+                            <td><span style="font-family: monospace;">v1.3</span></td>
+                            <td>李老师</td>
+                            <td>35s</td>
+                            <td><span class="status-badge st-success">Success</span></td>
+                            <td><a class="text-link">查看日志</a></td>
                         </tr>
                         <tr>
-                            <td>
-                                <div>
-                                    <div style="font-weight: 500;">李四</div>
-                                    <span class="user-code">2025002</span>
-                                </div>
-                            </td>
-                            <td><span class="tag tag-gray">课程设计</span></td>
-                            <td><span style="color: var(--text-4);">-</span></td>
-                            <td><span class="status-badge st-danger"><span class="dot"></span>启动失败</span></td>
-                            <td style="color: var(--text-3); font-size: 13px;">2024-12-23 15:45</td>
-                            <td style="text-align: right;">
-                                <a class="text-link" href="student_detail.html" style="margin-right: 12px;">详情</a>
-                                <a class="text-link" href="#">查看日志</a>
-                            </td>
+                            <td>2024-12-30 08:45:10</td>
+                            <td>李四 / hydrology-model</td>
+                            <td><span style="font-family: monospace;">v2.0-rc1</span></td>
+                            <td>李四</td>
+                            <td>-</td>
+                            <td><span class="status-badge st-process">Deploying...</span></td>
+                            <td><a class="text-link">详情</a></td>
                         </tr>
                         <tr>
-                            <td>
-                                <div>
-                                    <div style="font-weight: 500;">王五</div>
-                                    <span class="user-code">2025003</span>
-                                </div>
-                            </td>
-                            <td><span class="tag tag-blue">毕业设计</span></td>
-                            <td><span style="color: var(--text-4);">-</span></td>
-                            <td><span class="status-badge st-gray"><span class="dot"></span>待部署</span></td>
-                            <td style="color: var(--text-3); font-size: 13px;">2024-12-20 09:12</td>
-                            <td style="text-align: right;">
-                                <a class="text-link" href="student_detail.html" style="margin-right: 12px;">详情</a>
-                                <a class="text-link" href="#">立即部署</a>
-                            </td>
+                            <td>2024-12-29 16:30:22</td>
+                            <td>王五 / demo-test-01</td>
+                            <td><span style="font-family: monospace;">latest</span></td>
+                            <td>系统自动</td>
+                            <td>12s</td>
+                            <td><span class="status-badge st-danger">Failed</span></td>
+                            <td><a class="text-link">查看日志</a></td>
+                        </tr>
+                        <tr>
+                            <td>2024-12-29 14:15:00</td>
+                            <td>赵六 / graduation-final</td>
+                            <td><span style="font-family: monospace;">v1.0.0</span></td>
+                            <td>李老师</td>
+                            <td>42s</td>
+                            <td><span class="status-badge st-success">Success</span></td>
+                            <td><a class="text-link">查看日志</a></td>
                         </tr>
                     </tbody>
                 </table>
 
-                <!-- Pagination -->
                 <div class="pagination">
                     <div class="page-item">
                         << /div>
                             <div class="page-item active">1</div>
                             <div class="page-item">2</div>
-                            <div class="page-item">3</div>
                             <div class="page-item">></div>
                     </div>
                 </div>

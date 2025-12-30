@@ -6,6 +6,10 @@ import LoginPage from './pages/LoginPage'
 import StudentsPage from './pages/StudentsPage'
 import StudentDetailPage from './pages/StudentDetailPage'
 import DeploymentsPage from './pages/DeploymentsPage'
+import AdminProjectsPage from './pages/AdminProjectsPage'
+import RegistryPage from './pages/RegistryPage'
+import MonitoringPage from './pages/MonitoringPage'
+import ProjectStatusPage from './pages/ProjectStatusPage'
 
 const RequireAuth = () => {
   const { isAuthenticated, isLoading } = useAuth()
@@ -24,6 +28,13 @@ const AppRoutes = () => {
           <Route path="/students" element={<StudentsPage />} />
           <Route path="/students/:id" element={<StudentDetailPage />} />
           <Route path="/deployments" element={<DeploymentsPage />} />
+          <Route path="/projects/:id/status" element={<ProjectStatusPage />} />
+
+          {/* Admin Routes */}
+          <Route path="/admin/projects" element={<AdminProjectsPage />} />
+          <Route path="/admin/registry" element={<RegistryPage />} />
+          <Route path="/admin/monitoring" element={<MonitoringPage />} />
+
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
         </Route>
       </Route>

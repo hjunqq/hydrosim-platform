@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>项目列表 - Hydrosim 教学管理门户</title>
+    <title>镜像仓库 - Hydrosim 教学管理门户</title>
     <style>
         :root {
             /* Palette: Arco Design Blue */
@@ -48,7 +48,7 @@
             overflow: hidden;
         }
 
-        /* Sidebar similar to admin_dashboard */
+        /* Sidebar Standard */
         .sidebar {
             width: 240px;
             background: #fff;
@@ -166,7 +166,7 @@
             color: var(--text-3);
         }
 
-        /* Layout */
+        /* Workspace */
         .workspace {
             flex: 1;
             display: flex;
@@ -196,44 +196,108 @@
             flex: 1;
         }
 
-        .list-container {
-            background: #fff;
-            border-radius: 4px;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.03);
-            border: 1px solid var(--border);
+        /* Registry Styles */
+        .registry-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 20px;
+            margin-bottom: 32px;
         }
 
-        /* Filter Bar */
-        .filter-bar {
-            padding: 16px 20px;
+        .registry-card {
+            background: #fff;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 24px;
+            transition: all 0.2s;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .registry-card:hover {
+            border-color: var(--primary-6);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        }
+
+        .rc-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+
+        .rc-icon {
+            width: 48px;
+            height: 48px;
+            background: var(--fill-1);
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            margin-right: 16px;
+        }
+
+        .rc-info {
+            flex: 1;
+        }
+
+        .rc-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-1);
+            margin-bottom: 4px;
+        }
+
+        .rc-url {
+            font-size: 12px;
+            color: var(--text-3);
+            font-family: monospace;
+        }
+
+        .rc-status {
+            padding: 2px 8px;
+            border-radius: 2px;
+            font-size: 12px;
+            background: var(--success-1);
+            color: var(--success-6);
+        }
+
+        .rc-stats {
+            display: flex;
+            gap: 24px;
+            padding: 16px 0;
+            border-top: 1px solid var(--border);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .stat-item .label {
+            font-size: 12px;
+            color: var(--text-3);
+            margin-bottom: 4px;
+        }
+
+        .stat-item .value {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-1);
+        }
+
+        .rc-actions {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            border-bottom: 1px solid var(--border);
-            flex-wrap: wrap;
-            gap: 12px;
+            font-size: 13px;
         }
 
-        .filter-group {
-            display: flex;
-            gap: 12px;
+        .text-link {
+            color: var(--primary-6);
+            text-decoration: none;
+            cursor: pointer;
         }
 
-        .input,
-        .select {
-            height: 32px;
-            border: 1px solid var(--border);
-            padding: 0 12px;
-            border-radius: 2px;
-            outline: none;
-            color: var(--text-2);
-            font-size: 14px;
-            background: #fff;
-        }
-
-        .input:focus,
-        .select:focus {
-            border-color: var(--primary-6);
+        .text-link:hover {
+            text-decoration: underline;
         }
 
         .btn {
@@ -269,7 +333,24 @@
             color: var(--primary-6);
         }
 
-        /* Table */
+        /* Images List */
+        .list-section {
+            background: #fff;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+        }
+
+        .list-header {
+            padding: 16px 24px;
+            border-bottom: 1px solid var(--border);
+            font-size: 16px;
+            font-weight: 500;
+            color: var(--text-1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
         .table {
             width: 100%;
             border-collapse: collapse;
@@ -277,7 +358,7 @@
 
         .table th {
             text-align: left;
-            padding: 12px 20px;
+            padding: 12px 24px;
             background: var(--fill-1);
             color: var(--text-2);
             font-weight: 500;
@@ -286,7 +367,7 @@
         }
 
         .table td {
-            padding: 14px 20px;
+            padding: 14px 24px;
             border-bottom: 1px solid var(--border);
             font-size: 14px;
             color: var(--text-2);
@@ -295,108 +376,6 @@
 
         .table tr:hover {
             background-color: var(--fill-1);
-        }
-
-        /* Badges & Tags */
-        .status-badge {
-            display: inline-flex;
-            align-items: center;
-            padding: 2px 10px;
-            border-radius: 12px;
-            font-size: 12px;
-        }
-
-        .st-success {
-            background: var(--success-1);
-            color: var(--success-6);
-        }
-
-        .st-danger {
-            background: var(--danger-1);
-            color: var(--danger-6);
-        }
-
-        .st-warning {
-            background: var(--warning-1);
-            color: var(--warning-6);
-        }
-
-        .st-gray {
-            background: var(--fill-2);
-            color: var(--text-3);
-        }
-
-        .dot {
-            width: 6px;
-            height: 6px;
-            border-radius: 50%;
-            margin-right: 6px;
-            background: currentColor;
-        }
-
-        .tag {
-            padding: 2px 8px;
-            border-radius: 2px;
-            font-size: 12px;
-        }
-
-        .tag-blue {
-            background: var(--primary-1);
-            color: var(--primary-6);
-        }
-
-        .tag-gray {
-            background: var(--fill-1);
-            color: var(--text-2);
-        }
-
-        .text-link {
-            color: var(--primary-6);
-            text-decoration: none;
-            cursor: pointer;
-        }
-
-        .text-link:hover {
-            text-decoration: underline;
-        }
-
-        .user-code {
-            font-size: 12px;
-            color: var(--text-3);
-            font-family: monospace;
-        }
-
-        /* Pagination */
-        .pagination {
-            padding: 16px 24px;
-            display: flex;
-            justify-content: flex-end;
-            gap: 8px;
-            border-top: 1px solid var(--border);
-        }
-
-        .page-item {
-            width: 32px;
-            height: 32px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border: 1px solid var(--border);
-            border-radius: 2px;
-            cursor: pointer;
-            color: var(--text-2);
-            font-size: 13px;
-        }
-
-        .page-item:hover {
-            border-color: var(--primary-6);
-            color: var(--primary-6);
-        }
-
-        .page-item.active {
-            border-color: var(--primary-6);
-            color: var(--primary-6);
-            background: var(--primary-1);
         }
     </style>
 <style>
@@ -534,17 +513,26 @@
             <div class="logo-text">Hydrosim Portal</div>
         </div>
         <nav class="nav-menu">
+            <div class="nav-group-title">管理视图 (Admin)</div>
+            <a href="admin_dashboard.html" class="nav-item">
+                <span class="nav-icon">🎓</span> 全局项目
+            </a>
+            <a href="registry.html" class="nav-item active">
+                <span class="nav-icon">📦</span> 镜像仓库
+            </a>
+            <a href="admin_dashboard.html?view=monitoring" class="nav-item">
+                <span class="nav-icon">⚡</span> 资源监控
+            </a>
+            <a href="deployments.html" class="nav-item">
+                <span class="nav-icon">🚀</span> 部署记录
+            </a>
+
             <div class="nav-group-title">教学视图 (Teacher)</div>
             <a href="dashboard.html" class="nav-item">
                 <span class="nav-icon">🏫</span> 教师工作台
             </a>
-            <a href="student_list.html" class="nav-item active">
+            <a href="student_list.html" class="nav-item">
                 <span class="nav-icon">📋</span> 学生项目列表
-            </a>
-
-            <div class="nav-group-title">系统管理</div>
-            <a href="admin_dashboard.html" class="nav-item" style="color: var(--primary-6);">
-                <span class="nav-icon">🛡️</span> 进入管理后台
             </a>
         </nav>
         <div class="user-profile">
@@ -559,113 +547,137 @@
 
     <div class="workspace">
         <div class="top-bar">
-            <h1 class="page-title">学生项目列表</h1>
-            <div style="font-size: 13px; color: var(--text-3);">共 42 个项目</div>
+            <h1 class="page-title">镜像仓库管理</h1>
+            <button class="btn btn-primary">+ 添加仓库连接</button>
         </div>
 
         <div class="content">
-            <div class="list-container">
-                <!-- Filter -->
-                <div class="filter-bar">
-                    <div class="filter-group">
-                        <input type="text" class="input" placeholder="搜索学生姓名、学号或项目ID" style="width: 240px;">
-                        <select class="select">
-                            <option>所有类型</option>
-                            <option>毕业设计</option>
-                            <option>课程设计</option>
-                        </select>
-                        <select class="select">
-                            <option>所有状态</option>
-                            <option>运行中</option>
-                            <option>异常</option>
-                            <option>待部署</option>
-                        </select>
+            <div class="registry-grid">
+                <!-- Registry 1 -->
+                <div class="registry-card">
+                    <div class="rc-header">
+                        <div style="display: flex;">
+                            <div class="rc-icon">🏛️</div>
+                            <div class="rc-info">
+                                <div class="rc-title">Harbor Internal</div>
+                                <div class="rc-url">harbor.hydrosim.cn</div>
+                            </div>
+                        </div>
+                        <span class="rc-status">Connected</span>
                     </div>
-                    <div class="filter-group">
-                        <button class="btn btn-default">🔄 刷新</button>
-                        <button class="btn btn-primary" onclick="alert('Open Create Modal')">+ 新建项目</button>
+                    <div class="rc-stats">
+                        <div class="stat-item">
+                            <div class="label">Repositories</div>
+                            <div class="value">2,405</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="label">Last Sync</div>
+                            <div class="value">2 mins ago</div>
+                        </div>
+                    </div>
+                    <div class="rc-actions">
+                        <span style="color: var(--text-3);">Default Registry</span>
+                        <div style="display: flex; gap: 12px;">
+                            <a class="text-link" style="margin-right: 12px;">Sync Info</a>
+                            <a class="text-link">Edit</a>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Table -->
+                <!-- Registry 2 -->
+                <div class="registry-card">
+                    <div class="rc-header">
+                        <div style="display: flex;">
+                            <div class="rc-icon">🐳</div>
+                            <div class="rc-info">
+                                <div class="rc-title">Docker Hub (Public)</div>
+                                <div class="rc-url">docker.io</div>
+                            </div>
+                        </div>
+                        <span class="rc-status">Active</span>
+                    </div>
+                    <div class="rc-stats">
+                        <div class="stat-item">
+                            <div class="label">Cached</div>
+                            <div class="value">120</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="label">Quota Usage</div>
+                            <div class="value">15%</div>
+                        </div>
+                    </div>
+                    <div class="rc-actions">
+                        <span style="color: var(--text-3);">Public Source</span>
+                        <div style="display: flex; gap: 12px;">
+                            <a class="text-link" style="margin-right: 12px;">Test</a>
+                            <a class="text-link">Edit</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="list-section">
+                <div class="list-header">
+                    <span>镜像列表 (Available Images)</span>
+                    <input type="text" placeholder="Search images..."
+                        style="padding: 6px 12px; border: 1px solid var(--border); border-radius: 2px; width: 240px; font-size: 13px;">
+                </div>
                 <table class="table">
                     <thead>
                         <tr>
-                            <th width="200">学生信息</th>
-                            <th width="120">项目类型</th>
-                            <th>访问域名 (Domain)</th>
-                            <th width="140">当前状态</th>
-                            <th width="180">更新时间</th>
-                            <th width="180" style="text-align: right;">操作</th>
+                            <th>镜像名称 (Repository)</th>
+                            <th>Tags</th>
+                            <th>大小</th>
+                            <th>最近更新</th>
+                            <th>来源</th>
+                            <th>操作</th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr>
                             <td>
-                                <div>
-                                    <div style="font-weight: 500;">张三</div>
-                                    <span class="user-code">2025001</span>
-                                </div>
+                                <div style="font-weight: 500;">hydrosim/fluid-sim-base</div>
+                                <div style="font-size: 12px; color: var(--text-3);">基础流体力学模拟环境</div>
                             </td>
-                            <td><span class="tag tag-blue">毕业设计</span></td>
-                            <td><a class="text-link" href="#" target="_blank">zhangsan.hydrosim.cloud</a></td>
-                            <td><span class="status-badge st-success"><span class="dot"></span>运行中</span></td>
-                            <td style="color: var(--text-3); font-size: 13px;">2024-12-24 10:30</td>
-                            <td style="text-align: right;">
-                                <a class="text-link" href="student_dashboard.html?mode=teacher"
-                                    style="margin-right: 12px; font-weight: bold; color: var(--success-6);">监控</a>
-                                <a class="text-link" href="student_detail.html?mode=teacher"
-                                    style="margin-right: 12px;">详情</a>
-                                <a class="text-link" href="#">重新部署</a>
-                            </td>
+                            <td><span
+                                    style="background: var(--fill-2); padding: 2px 6px; border-radius: 2px; font-family: monospace;">v1.2,
+                                    latest</span></td>
+                            <td>1.2 GB</td>
+                            <td>2024-12-28 10:00</td>
+                            <td>Harbor Internal</td>
+                            <td><a class="text-link">Copy Pull Command</a></td>
                         </tr>
                         <tr>
                             <td>
-                                <div>
-                                    <div style="font-weight: 500;">李四</div>
-                                    <span class="user-code">2025002</span>
-                                </div>
+                                <div style="font-weight: 500;">hydrosim/jupyter-lab-sci</div>
+                                <div style="font-size: 12px; color: var(--text-3);">集成常用科学计算库的 Notebook 环境</div>
                             </td>
-                            <td><span class="tag tag-gray">课程设计</span></td>
-                            <td><span style="color: var(--text-4);">-</span></td>
-                            <td><span class="status-badge st-danger"><span class="dot"></span>启动失败</span></td>
-                            <td style="color: var(--text-3); font-size: 13px;">2024-12-23 15:45</td>
-                            <td style="text-align: right;">
-                                <a class="text-link" href="student_detail.html" style="margin-right: 12px;">详情</a>
-                                <a class="text-link" href="#">查看日志</a>
-                            </td>
+                            <td><span
+                                    style="background: var(--fill-2); padding: 2px 6px; border-radius: 2px; font-family: monospace;">v3.0,
+                                    v2.8</span></td>
+                            <td>2.5 GB</td>
+                            <td>2024-12-25 14:30</td>
+                            <td>Harbor Internal</td>
+                            <td><a class="text-link">Copy Pull Command</a></td>
                         </tr>
                         <tr>
                             <td>
-                                <div>
-                                    <div style="font-weight: 500;">王五</div>
-                                    <span class="user-code">2025003</span>
-                                </div>
+                                <div style="font-weight: 500;">library/postgres</div>
+                                <div style="font-size: 12px; color: var(--text-3);">Official PostgreSQL Image</div>
                             </td>
-                            <td><span class="tag tag-blue">毕业设计</span></td>
-                            <td><span style="color: var(--text-4);">-</span></td>
-                            <td><span class="status-badge st-gray"><span class="dot"></span>待部署</span></td>
-                            <td style="color: var(--text-3); font-size: 13px;">2024-12-20 09:12</td>
-                            <td style="text-align: right;">
-                                <a class="text-link" href="student_detail.html" style="margin-right: 12px;">详情</a>
-                                <a class="text-link" href="#">立即部署</a>
+                            <td><span
+                                    style="background: var(--fill-2); padding: 2px 6px; border-radius: 2px; font-family: monospace;">14-alpine</span>
                             </td>
+                            <td>180 MB</td>
+                            <td>2024-12-01 09:15</td>
+                            <td>Docker Hub</td>
+                            <td><a class="text-link">Copy Pull Command</a></td>
                         </tr>
                     </tbody>
                 </table>
-
-                <!-- Pagination -->
-                <div class="pagination">
-                    <div class="page-item">
-                        << /div>
-                            <div class="page-item active">1</div>
-                            <div class="page-item">2</div>
-                            <div class="page-item">3</div>
-                            <div class="page-item">></div>
-                    </div>
-                </div>
             </div>
         </div>
+    </div>
 </body>
 
 </html>

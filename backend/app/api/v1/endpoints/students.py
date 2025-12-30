@@ -27,7 +27,36 @@ def list_students(
         except ValueError as exc:
             raise HTTPException(status_code=400, detail="Invalid project_type") from exc
         query = query.filter(models.Student.project_type == project_enum)
-    return query.offset(skip).limit(limit).all()
+
+    students_orm = query.offset(skip).limit(limit).all()
+    
+    # Enrich with Real-time K8s Status
+    from app.services.deployment_monitor import get_all_deployment_statuses
+    real_time_statuses = get_all_deployment_statuses()
+    
+    result = []
+    for s in students_orm:
+        # Convert to Pydantic model
+        s_dto = schemas.Student.from_orm(s)
+        
+        # Check status
+        if s.student_code in real_time_statuses:
+            k8s_info = real_time_statuses[s.student_code]
+            s_dto.latest_deploy_status = k8s_info.get("status", "not_deployed")
+            s_dto.latest_deploy_message = k8s_info.get("detail", "")
+            s_dto.running_image = k8s_info.get("image", "-")
+            
+            # Check Expected Image
+            if s.expected_image_name and s_dto.latest_deploy_status not in ["not_deployed", "stopped"]:
+                 if s.expected_image_name not in s_dto.running_image:
+                      s_dto.latest_deploy_status = "error"
+                      s_dto.latest_deploy_message = f"Missing expected image: {s.expected_image_name}"
+        else:
+            s_dto.latest_deploy_status = "not_deployed"
+            
+        result.append(s_dto)
+        
+    return result
 
 
 @router.get("/{student_id}", response_model=schemas.Student)

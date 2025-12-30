@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react'
-import DataGrid, { Column, Paging, SearchPanel } from 'devextreme-react/data-grid'
+import DataGrid, { Column, FilterRow, Paging, SearchPanel } from 'devextreme-react/data-grid'
+import Button from 'devextreme-react/button'
 import notify from 'devextreme/ui/notify'
+import { confirm } from 'devextreme/ui/dialog'
 import request from '../api/request'
 
 interface K8sResource {
@@ -22,12 +24,27 @@ const DeploymentsPage = () => {
         try {
             setLoading(true)
             const data = await request.get<K8sResource[]>('/api/v1/deploy/resources/list')
-            // request interceptor returns data directly
             setResources(data as unknown as K8sResource[])
         } catch (err) {
             notify('Failed to load cluster resources', 'error', 3000)
         } finally {
             setLoading(false)
+        }
+    }
+
+    const handleDelete = async (data: K8sResource) => {
+        const result = await confirm(`确定要删除 ${data.student_code} 的部署吗? 此操作将移除所有相关 Pod 和服务。`, '确认删除')
+        if (result) {
+            try {
+                // DELETE /api/v1/deploy/{student_code}?project_type={project_type}
+                await request.delete(`/api/v1/deploy/${data.student_code}`, {
+                    params: { project_type: data.project_type }
+                })
+                notify('部署已成功删除', 'success', 2000)
+                loadData() // Refresh
+            } catch (err) {
+                notify('删除失败: ' + err, 'error', 3000)
+            }
         }
     }
 
@@ -40,51 +57,73 @@ const DeploymentsPage = () => {
     const statusCellRender = (cellData: any) => {
         const isHealthy = cellData.value === 'Running'
         return (
-            <span style={{
-                color: isHealthy ? 'var(--success-6)' : 'var(--danger-6)',
-                fontWeight: 500,
-                display: 'flex', alignItems: 'center', gap: 6
-            }}>
-                <span style={{
-                    width: 8, height: 8, borderRadius: '50%',
-                    background: isHealthy ? 'var(--success-1)' : 'var(--danger-1)',
-                    border: `2px solid ${isHealthy ? 'var(--success-6)' : 'var(--danger-6)'}`
-                }} />
+            <span className={`status-badge ${isHealthy ? 'st-success' : 'st-danger'}`}>
+                <span className="dot"></span>
                 {cellData.value}
             </span>
         )
     }
 
     return (
-        <div style={{ padding: 24, maxWidth: 1600, margin: '0 auto' }}>
-            <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <>
+            {/* Top Bar - consistent with other pages */}
+            <div className="top-bar">
                 <div>
-                    <h1 style={{ fontSize: 24, fontWeight: 600, color: 'var(--text-1)', marginBottom: 8 }}>Cluster Operations Center</h1>
-                    <p style={{ color: 'var(--text-3)' }}>Real-time view of Kubernetes Deployments in student namespaces</p>
+                    <h1 className="page-title">部署记录 (Deployments)</h1>
+                    <div className="page-subtitle">实时监控学生项目的 K8s Deployment 状态。</div>
                 </div>
-                <button className="btn btn-primary" onClick={loadData}>Refresh</button>
+                <div className="panel-actions">
+                    <Button text="刷新列表" icon="refresh" stylingMode="contained" onClick={loadData} height={36} />
+                </div>
             </div>
 
-            <div className="modern-card">
-                <DataGrid
-                    dataSource={resources}
-                    showBorders={false}
-                    rowAlternationEnabled={true}
-                    columnAutoWidth={true}
-                >
-                    <SearchPanel visible={true} width={300} placeholder="Search deployments..." />
-                    <Paging defaultPageSize={20} />
+            <div className="content-scroll">
+                <div className="modern-card">
+                    {loading ? (
+                        <div className="card-body">
+                            <div className="empty-state">
+                                <i className="dx-icon-refresh"></i>
+                                <p>数据加载中...</p>
+                            </div>
+                        </div>
+                    ) : (
+                        <DataGrid
+                            dataSource={resources}
+                            showBorders={false}
+                            rowAlternationEnabled={true}
+                            columnAutoWidth={true}
+                            noDataText="暂无部署数据"
+                        >
+                            <SearchPanel visible={true} width={300} placeholder="搜索部署..." />
+                            <FilterRow visible={true} />
+                            <Paging defaultPageSize={20} />
 
-                    <Column dataField="student_code" caption="Student Code" sortOrder="asc" />
-                    <Column dataField="deployment_name" caption="K8s Deployment" />
-                    <Column dataField="namespace" caption="Namespace" />
-                    <Column dataField="image" caption="Image" />
-                    <Column dataField="replicas" caption="Replicas (Ready/Target)" alignment="center" />
-                    <Column dataField="status" caption="Health" cellRender={statusCellRender} alignment="center" />
-                    <Column dataField="created_at" caption="Created At" dataType="datetime" />
-                </DataGrid>
+                    <Column dataField="student_code" caption="学号 (Student Code)" sortOrder="asc" />
+                    <Column dataField="deployment_name" caption="部署名称 (Deployment)" />
+                    <Column dataField="namespace" caption="命名空间 (Namespace)" />
+                    <Column dataField="image" caption="镜像 (Image)" />
+                    <Column dataField="replicas" caption="副本数 (Ready/Target)" alignment="center" />
+                    <Column dataField="status" caption="健康状态" cellRender={statusCellRender} alignment="center" />
+                    <Column dataField="created_at" caption="创建时间" dataType="datetime" format="yyyy-MM-dd HH:mm:ss" />
+                    <Column
+                        caption="操作"
+                        width={80}
+                        alignment="center"
+                        cellRender={(cellData) => (
+                            <Button
+                                icon="trash"
+                                type="danger"
+                                stylingMode="text"
+                                onClick={() => handleDelete(cellData.data)}
+                                hint="删除部署"
+                            />
+                        )}
+                    />
+                        </DataGrid>
+                    )}
+                </div>
             </div>
-        </div>
+        </>
     )
 }
 

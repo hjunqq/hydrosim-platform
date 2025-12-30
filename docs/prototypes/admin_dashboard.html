@@ -1,0 +1,900 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>管理员控制台 - Hydrosim 教学管理门户</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            /* Palette: Arco Design Blue */
+            --primary-6: #165DFF;
+            --primary-5: #4080FF;
+            --primary-1: #E8F3FF;
+
+            --success-6: #00B42A;
+            --success-1: #E8FFEA;
+
+            --warning-6: #FF7D00;
+            --warning-1: #FFF7E8;
+
+            --danger-6: #F53F3F;
+            --danger-1: #FFECE8;
+
+            --text-1: #1D2129;
+            --text-2: #4E5969;
+            --text-3: #86909C;
+            --text-4: #C9CDD4;
+
+            --fill-1: #F7F8FA;
+            --fill-2: #F2F3F5;
+            --bg-white: #FFFFFF;
+
+            --border: #E5E6EB;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: var(--fill-1);
+            color: var(--text-2);
+            font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            height: 100vh;
+            display: flex;
+            overflow: hidden;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 240px;
+            background: #fff;
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+            z-index: 10;
+        }
+
+        .logo-area {
+            height: 64px;
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .logo-icon {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, #165DFF 0%, #00369E 100%);
+            border-radius: 8px;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 18px;
+            margin-right: 12px;
+        }
+
+        .logo-text {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-1);
+        }
+
+        .nav-menu {
+            padding: 16px 8px;
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .nav-group-title {
+            padding: 8px 12px;
+            font-size: 12px;
+            color: var(--text-3);
+            margin-top: 8px;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            height: 40px;
+            padding: 0 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: var(--text-2);
+            font-size: 14px;
+            margin-bottom: 4px;
+            text-decoration: none;
+        }
+
+        .nav-item:hover {
+            background-color: var(--fill-2);
+        }
+
+        .nav-item.active {
+            background-color: var(--primary-1);
+            color: var(--primary-6);
+            font-weight: 500;
+        }
+
+        .nav-icon {
+            margin-right: 12px;
+            font-size: 16px;
+            width: 20px;
+            text-align: center;
+        }
+
+        .user-profile {
+            padding: 16px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .avatar {
+            width: 36px;
+            height: 36px;
+            background: #F53F3F;
+            /* Admin Red */
+            border-radius: 50%;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+        }
+
+        .user-info {
+            flex: 1;
+        }
+
+        .user-name {
+            font-size: 14px;
+            color: var(--text-1);
+            font-weight: 500;
+        }
+
+        .user-role {
+            font-size: 12px;
+            color: var(--text-3);
+        }
+
+        /* Workspace */
+        .workspace {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .top-bar {
+            height: 64px;
+            background: #fff;
+            border-bottom: 1px solid var(--border);
+            padding: 0 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .page-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--text-1);
+        }
+
+        .top-actions {
+            display: flex;
+            gap: 12px;
+        }
+
+        .btn {
+            height: 32px;
+            padding: 0 16px;
+            border-radius: 2px;
+            cursor: pointer;
+            font-size: 14px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background-color: var(--primary-6);
+            color: #fff;
+        }
+
+        .btn-primary:hover {
+            background-color: var(--primary-5);
+        }
+
+        .btn-default {
+            background-color: #fff;
+            border-color: var(--border);
+            color: var(--text-2);
+        }
+
+        .btn-default:hover {
+            border-color: var(--primary-6);
+            color: var(--primary-6);
+        }
+
+        .content-scroll {
+            padding: 24px;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        /* Cards */
+        .grid-stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background: #fff;
+            padding: 20px 24px;
+            border-radius: 4px;
+            border: 1px solid var(--border);
+            /* Simplify border */
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.03);
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+        }
+
+        .stat-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .stat-label {
+            font-size: 14px;
+            color: var(--text-2);
+        }
+
+        .stat-value {
+            font-size: 30px;
+            font-weight: 700;
+            color: var(--text-1);
+            line-height: 1.2;
+            font-family: 'DIN Alternate', 'Roboto', sans-serif;
+        }
+
+        .stat-footer {
+            margin-top: 8px;
+            font-size: 12px;
+            color: var(--text-3);
+        }
+
+        /* Modules & Tables */
+        .modern-card {
+            background: #fff;
+            border-radius: 4px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.03);
+            margin-bottom: 24px;
+        }
+
+        .card-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .card-title {
+            font-size: 16px;
+            font-weight: 500;
+            color: var(--text-1);
+        }
+
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .table th {
+            text-align: left;
+            padding: 12px 20px;
+            background: var(--fill-1);
+            color: var(--text-2);
+            font-weight: 500;
+            font-size: 13px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .table td {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            font-size: 14px;
+            color: var(--text-2);
+            vertical-align: middle;
+        }
+
+        .table tr:hover {
+            background-color: var(--fill-1);
+        }
+
+        /* Status Badges */
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+        }
+
+        .st-success {
+            background: var(--success-1);
+            color: var(--success-6);
+        }
+
+        .st-danger {
+            background: var(--danger-1);
+            color: var(--danger-6);
+        }
+
+        .st-warning {
+            background: var(--warning-1);
+            color: var(--warning-6);
+        }
+
+        .st-gray {
+            background: var(--fill-2);
+            color: var(--text-3);
+        }
+
+        .dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            margin-right: 6px;
+            background: currentColor;
+        }
+
+        /* Utility */
+        .hidden {
+            display: none;
+        }
+
+        .text-link {
+            color: var(--primary-6);
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        .text-link:hover {
+            text-decoration: underline;
+        }
+
+        /* Forms */
+        .filter-bar {
+            padding: 16px 20px;
+            display: flex;
+            gap: 12px;
+            border-bottom: 1px solid var(--border);
+            flex-wrap: wrap;
+        }
+
+        .input,
+        .select {
+            height: 32px;
+            border: 1px solid var(--border);
+            padding: 0 12px;
+            border-radius: 2px;
+            outline: none;
+            color: var(--text-2);
+            font-size: 14px;
+        }
+
+        .input:focus,
+        .select:focus {
+            border-color: var(--primary-6);
+        }
+
+        /* Grid for Registry */
+        .registry-grid {
+            padding: 20px;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .registry-card {
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            transition: all 0.2s;
+        }
+
+        .registry-card:hover {
+            border-color: var(--primary-6);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        }
+    </style>
+<style>
+        /* Hydro Panel Overrides */
+        :root {
+            --primary-6: #0B6B77;
+            --primary-5: #1297A6;
+            --primary-1: #E1F4F6;
+            --accent-6: #0B4A7D;
+            --accent-1: #E3EEF7;
+            --success-6: #1B9A6A;
+            --success-1: #E4F7EF;
+            --warning-6: #F08B2D;
+            --warning-1: #FFF1E4;
+            --danger-6: #E5484D;
+            --danger-1: #FEEBEC;
+            --text-1: #0B1F2A;
+            --text-2: #2B3A4A;
+            --text-3: #637282;
+            --text-4: #9AA7B4;
+            --fill-0: #F9FCFD;
+            --fill-1: #F2F7F8;
+            --fill-2: #E8EEF2;
+            --bg-white: #FFFFFF;
+            --border-color: #DCE6EC;
+            --border-strong: #C8D6DF;
+            --border: var(--border-color);
+        }
+
+        body {
+            background-color: var(--fill-1);
+            background-image:
+                radial-gradient(1200px circle at 10% -10%, rgba(18, 151, 166, 0.18), transparent 55%),
+                radial-gradient(900px circle at 100% 0%, rgba(11, 74, 125, 0.16), transparent 60%),
+                linear-gradient(180deg, #F7FBFC 0%, #F2F7F8 55%, #F7FAFD 100%);
+            color: var(--text-2);
+            font-family: 'Noto Sans SC', 'HarmonyOS Sans', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background:
+                radial-gradient(500px circle at 80% 20%, rgba(27, 154, 106, 0.08), transparent 60%),
+                radial-gradient(600px circle at 20% 80%, rgba(240, 139, 45, 0.08), transparent 65%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .sidebar {
+            background: rgba(255, 255, 255, 0.92);
+            border-right: 1px solid var(--border-color);
+            box-shadow: 12px 0 24px -18px rgba(11, 31, 42, 0.35);
+            backdrop-filter: blur(12px);
+        }
+
+        .logo-icon {
+            background: linear-gradient(135deg, #0B6B77 0%, #0B4A7D 100%);
+            border-radius: 10px;
+        }
+
+        .nav-item {
+            height: 44px;
+            padding: 0 14px;
+            border-radius: 10px;
+        }
+
+        .nav-item:hover {
+            background-color: rgba(11, 107, 119, 0.08);
+            color: var(--primary-6);
+        }
+
+        .nav-item.active {
+            background: linear-gradient(90deg, var(--primary-1), rgba(11, 107, 119, 0.08));
+            color: var(--primary-6);
+            box-shadow: inset 0 0 0 1px rgba(11, 107, 119, 0.15);
+        }
+
+        .top-bar {
+            background: transparent;
+            border-bottom: none;
+            height: auto;
+            padding: 0 4px 16px;
+        }
+
+        .modern-card {
+            border-radius: 14px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 4px 14px rgba(11, 31, 42, 0.08);
+        }
+
+        .card-header {
+            background: linear-gradient(180deg, #FFFFFF 0%, #FAFCFE 100%);
+        }
+
+        .stat-card {
+            border-radius: 14px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 4px 14px rgba(11, 31, 42, 0.08);
+        }
+
+        .stat-card::after {
+            background: linear-gradient(135deg, rgba(11, 107, 119, 0) 0%, rgba(11, 107, 119, 0.12) 100%);
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 30px rgba(11, 31, 42, 0.08);
+            border-color: rgba(11, 107, 119, 0.25);
+        }
+
+        .table th,
+        .data-table th {
+            background: var(--fill-0);
+        }
+
+        .btn,
+        button {
+            border-radius: 10px;
+        }
+
+        .quick-item {
+            border-radius: 12px;
+            background: var(--fill-0);
+        }
+</style>
+
+</head>
+
+<body>
+    <aside class="sidebar">
+        <div class="logo-area">
+            <div class="logo-icon">H</div>
+            <div class="logo-text">Hydrosim Admin</div>
+        </div>
+        <nav class="nav-menu">
+            <div class="nav-group-title">管理视图 (Admin)</div>
+            <a href="#" onclick="switchTab('projects')" id="nav-projects" class="nav-item active">
+                <span class="nav-icon">🎓</span> 全局项目
+            </a>
+            <a href="registry.html" class="nav-item">
+                <span class="nav-icon">📦</span> 镜像仓库
+            </a>
+            <a href="#" onclick="switchTab('monitoring')" id="nav-monitoring" class="nav-item">
+                <span class="nav-icon">⚡</span> 资源监控
+            </a>
+            <a href="deployments.html" class="nav-item">
+                <span class="nav-icon">🚀</span> 部署记录
+            </a>
+
+            <div class="nav-group-title">教学视图 (Teacher)</div>
+            <a href="dashboard.html" class="nav-item">
+                <span class="nav-icon">🏫</span> 教师工作台
+            </a>
+            <a href="student_list.html" class="nav-item">
+                <span class="nav-icon">📋</span> 学生项目列表
+            </a>
+        </nav>
+        <div class="user-profile">
+            <div class="avatar">Admin</div>
+            <div class="user-info">
+                <div class="user-name">系统管理员</div>
+                <div class="user-role">Super Admin</div>
+            </div>
+            <div style="cursor: pointer; color: var(--text-3);">⋮</div>
+        </div>
+    </aside>
+
+    <div class="workspace">
+        <div class="top-bar">
+            <h1 class="page-title" id="page-title">系统总览</h1>
+            <div class="top-actions">
+                <div style="position: relative;">
+                    <input type="text" class="input" placeholder="🔍 全局搜索..."
+                        style="width: 200px; border-radius: 16px;">
+                </div>
+                <button class="btn btn-default">🔔</button>
+                <button class="btn btn-default">帮助</button>
+            </div>
+        </div>
+
+        <div class="content-scroll" id="content-area">
+
+            <!-- VIEW: DASHBOARD -->
+
+
+            <!-- VIEW: PROJECTS -->
+            <div id="view-projects">
+                <div class="modern-card">
+                    <div class="filter-bar">
+                        <select class="select">
+                            <option>所有教师</option>
+                            <option>李老师</option>
+                        </select>
+                        <select class="select">
+                            <option>所有状态</option>
+                            <option>Running</option>
+                            <option>Error</option>
+                        </select>
+                        <input type="text" class="input" placeholder="搜索项目、学号..." style="width: 240px;">
+                        <button class="btn btn-primary">查询</button>
+                    </div>
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>状态</th>
+                                <th>项目名称</th>
+                                <th>所属学生/教师</th>
+                                <th>镜像 Tag</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><span class="status-badge st-success"><span class="dot"></span>Running</span></td>
+                                <td>
+                                    <div style="font-weight: 500;">fluid-dynamics-vis</div>
+                                    <div style="font-size: 12px; color: var(--text-3);">http://fluid.hydrosim.cn</div>
+                                </td>
+                                <td>
+                                    <div>张三 (20201234)</div>
+                                    <div style="font-size: 12px; color: var(--text-3);">指导: 李老师</div>
+                                </td>
+                                <td style="font-family: monospace;">v1.2.3</td>
+                                <td>
+                                    <a class="text-link" style="margin-right: 10px;">详情</a>
+                                    <a class="text-link" style="margin-right: 10px;">日志</a>
+                                    <a class="text-link" style="color: var(--danger-6);">重启</a>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><span class="status-badge st-danger"><span class="dot"></span>CrashLoop</span></td>
+                                <td>
+                                    <div style="font-weight: 500;">hydrology-test</div>
+                                    <div style="font-size: 12px; color: var(--text-3);">http://test.hydrosim.cn</div>
+                                </td>
+                                <td>
+                                    <div>李四 (20205678)</div>
+                                    <div style="font-size: 12px; color: var(--text-3);">指导: 王老师</div>
+                                </td>
+                                <td style="font-family: monospace;">latest</td>
+                                <td>
+                                    <a href="student_dashboard.html?mode=admin" class="text-link"
+                                        style="margin-right: 10px; font-weight: bold; color: var(--success-6);">监控</a>
+                                    <a href="student_detail.html?mode=admin" class="text-link"
+                                        style="margin-right: 10px;">详情</a>
+                                    <a class="text-link" style="color: var(--primary-6);">Debug</a>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- VIEW: REGISTRY -->
+            <div id="view-registry" class="hidden">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                    <div style="color: var(--text-2);">管理平台可连接的镜像源</div>
+                    <button class="btn btn-primary">+ 添加仓库</button>
+                </div>
+                <div class="registry-grid">
+                    <div class="registry-card">
+                        <div style="display: flex; justify-content: space-between;">
+                            <span class="nav-icon" style="font-size: 24px;">🐳</span>
+                            <span class="status-badge st-success">Active</span>
+                        </div>
+                        <div>
+                            <div style="font-weight: 600; font-size: 16px;">Harbor Internal</div>
+                            <div style="font-size: 12px; color: var(--text-3);">harbor.hydrosim.cn</div>
+                        </div>
+                        <div style="display: flex; gap: 16px; margin-top: 8px;">
+                            <div>
+                                <div style="font-size: 12px; color: var(--text-3);">Images</div>
+                                <div style="font-weight: 500;">2,405</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 12px; color: var(--text-3);">Size</div>
+                                <div style="font-weight: 500;">456 GB</div>
+                            </div>
+                        </div>
+                        <div
+                            style="margin-top: auto; padding-top: 12px; border-top: 1px solid var(--border); display: flex; justify-content: space-between;">
+                            <span style="font-size: 12px; color: var(--text-3);">Synced 2m ago</span>
+                            <a class="text-link">Sync</a>
+                        </div>
+                    </div>
+
+                    <div class="registry-card">
+                        <div style="display: flex; justify-content: space-between;">
+                            <span class="nav-icon" style="font-size: 24px;">📦</span>
+                            <span class="status-badge st-success">Active</span>
+                        </div>
+                        <div>
+                            <div style="font-weight: 600; font-size: 16px;">Docker Hub</div>
+                            <div style="font-size: 12px; color: var(--text-3);">docker.io (Public)</div>
+                        </div>
+                        <div style="display: flex; gap: 16px; margin-top: 8px;">
+                            <div>
+                                <div style="font-size: 12px; color: var(--text-3);">Cached</div>
+                                <div style="font-weight: 500;">120</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 12px; color: var(--text-3);">Limit</div>
+                                <div style="font-weight: 500;">100/6h</div>
+                            </div>
+                        </div>
+                        <div
+                            style="margin-top: auto; padding-top: 12px; border-top: 1px solid var(--border); display: flex; justify-content: space-between;">
+                            <span style="font-size: 12px; color: var(--text-3);">Synced 1h ago</span>
+                            <a class="text-link">Sync</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VIEW: MONITORING -->
+            <div id="view-monitoring" class="hidden">
+                <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px;">
+                    <div class="modern-card">
+                        <div class="card-header">
+                            <span class="card-title">集群资源趋势</span>
+                            <div>
+                                <button class="btn btn-default" style="height: 24px; font-size: 12px;">24H</button>
+                                <button class="btn btn-default"
+                                    style="height: 24px; font-size: 12px; border: none;">7D</button>
+                            </div>
+                        </div>
+                        <div style="padding: 20px; height: 300px;">
+                            <canvas id="resourceChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; flex-direction: column; gap: 24px;">
+                        <div class="modern-card">
+                            <div class="card-header">
+                                <span class="card-title">健康得分</span>
+                            </div>
+                            <div style="padding: 40px; display: flex; justify-content: center; position: relative;">
+                                <!-- Simple CSS Circle or Text -->
+                                <div
+                                    style="width: 120px; height: 120px; border-radius: 50%; border: 10px solid var(--success-1); border-top-color: var(--success-6); display: flex; align-items: center; justify-content: center; flex-direction: column; transform: rotate(-45deg);">
+                                    <div style="transform: rotate(45deg); text-align: center;">
+                                        <div style="font-size: 24px; font-weight: bold; color: var(--text-1);">92</div>
+                                        <div style="font-size: 12px; color: var(--text-3);">Excellent</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div style="padding: 0 20px 20px; text-align: center; color: var(--text-2);">
+                                <div>Nodes Available: <strong>3/3</strong></div>
+                                <div style="margin-top: 4px;">Pods Running: <strong>145/200</strong></div>
+                            </div>
+                        </div>
+
+                        <div class="modern-card">
+                            <div class="card-header">
+                                <span class="card-title">Top Consumers (CPU)</span>
+                            </div>
+                            <div style="padding: 20px;">
+                                <div style="margin-bottom: 12px;">
+                                    <div
+                                        style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px;">
+                                        <span>fluid-sim-v2</span>
+                                        <span>2.5 Core</span>
+                                    </div>
+                                    <div style="height: 6px; background: var(--fill-2); border-radius: 3px;">
+                                        <div
+                                            style="width: 80%; height: 100%; background: var(--primary-6); border-radius: 3px;">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <div
+                                        style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px;">
+                                        <span>kafka-broker</span>
+                                        <span>1.8 Core</span>
+                                    </div>
+                                    <div style="height: 6px; background: var(--fill-2); border-radius: 3px;">
+                                        <div
+                                            style="width: 60%; height: 100%; background: var(--primary-5); border-radius: 3px;">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        function switchTab(tabId) {
+            // Hide all views
+            ['projects', 'monitoring'].forEach(id => {
+                document.getElementById('view-' + id).classList.add('hidden');
+                document.getElementById('nav-' + id).classList.remove('active');
+            });
+
+            // Show selected
+            document.getElementById('view-' + tabId).classList.remove('hidden');
+            document.getElementById('nav-' + tabId).classList.add('active');
+
+            // Update title
+            const titles = {
+                'projects': '全局项目管理',
+                'monitoring': '资源监控'
+            };
+            document.getElementById('page-title').textContent = titles[tabId];
+
+            if (tabId === 'monitoring') {
+                renderChart();
+            }
+        }
+
+        let chartRendered = false;
+        function renderChart() {
+            if (chartRendered) return;
+            const ctx = document.getElementById('resourceChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00'],
+                    datasets: [{
+                        label: 'CPU',
+                        data: [20, 35, 40, 60, 55, 30],
+                        borderColor: '#165DFF',
+                        backgroundColor: 'rgba(22, 93, 255, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    }, {
+                        label: 'Memory',
+                        data: [40, 45, 50, 55, 52, 48],
+                        borderColor: '#722ED1',
+                        backgroundColor: 'rgba(114, 46, 209, 0.05)',
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'top', align: 'end' }
+                    },
+                    scales: {
+                        y: { beginAtZero: true, grid: { borderDash: [4, 4], color: '#E5E6EB' } },
+                        x: { grid: { display: false } }
+                    }
+                }
+            });
+            chartRendered = true;
+        }
+        document.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const view = urlParams.get('view');
+            if (view && ['projects', 'monitoring'].includes(view)) {
+                switchTab(view);
+            }
+        });
+    </script>
+</body>
+
+</html>
