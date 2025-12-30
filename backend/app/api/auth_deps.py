@@ -14,9 +14,9 @@ security = HTTPBearer()
 def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
     db: Session = Depends(deps.get_db)
-) -> models.Teacher:
+):
     """
-    Validate JWT token and return current teacher user.
+    Validate JWT token and return current teacher or student user.
     """
     token = credentials.credentials
     
@@ -30,6 +30,8 @@ def get_current_user(
         )
     
     username: Optional[str] = payload.get("sub")
+    role: Optional[str] = payload.get("role")
+    
     if username is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -37,21 +39,30 @@ def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    # Query teacher from database
-    teacher = db.query(models.Teacher).filter(
+    # Check role derived from token (if exists) or try both tables
+    user = None
+    
+    # 1. Try Teachers
+    user = db.query(models.Teacher).filter(
         models.Teacher.username == username
     ).first()
     
-    if teacher is None:
+    # 2. Try Students if not found in Teachers
+    if user is None:
+        user = db.query(models.Student).filter(
+            models.Student.student_code == username
+        ).first()
+    
+    if user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User not found"
         )
     
-    if not teacher.is_active:
+    if not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Inactive user"
         )
     
-    return teacher
+    return user

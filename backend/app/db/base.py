@@ -3,3 +3,5 @@ from app.models.user import Teacher  # noqa
 from app.models.student import Student  # noqa
 from app.models.deployment import Deployment  # noqa
 from app.models.registry import Registry  # noqa
+from app.models.setting import SystemSetting  # noqa
+from app.models.semester import Semester  # noqa

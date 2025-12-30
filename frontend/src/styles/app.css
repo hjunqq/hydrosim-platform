@@ -229,7 +229,7 @@ body::before {
   min-height: 48px;
   background: transparent;
   border-bottom: none;
-  padding: 0 4px 16px;
+  padding: 16px 32px 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -330,7 +330,7 @@ body::before {
 
 /* Content Area fix */
 .content-scroll {
-  padding: 28px;
+  padding: 32px;
   overflow-y: auto;
   flex: 1;
   /* Top bar is now typically part of content or removed */
@@ -364,6 +364,46 @@ body::before {
 }
 
 .card-meta {
+  font-size: 12px;
+  color: var(--text-3);
+}
+
+.help-list {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--text-2);
+  line-height: 1.8;
+}
+
+.help-list li {
+  margin-bottom: 6px;
+}
+
+.help-section {
+  margin-bottom: 16px;
+}
+
+.help-section-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-1);
+  margin-bottom: 8px;
+}
+
+.help-code {
+  margin: 0;
+  padding: 12px 16px;
+  border-radius: 12px;
+  border: 1px dashed var(--border-color);
+  background: var(--fill-0);
+  font-family: Consolas, 'Courier New', monospace;
+  font-size: 12px;
+  color: var(--text-2);
+  overflow-x: auto;
+  white-space: pre-wrap;
+}
+
+.help-note {
   font-size: 12px;
   color: var(--text-3);
 }
@@ -1005,7 +1045,7 @@ body::before {
   background: rgba(11, 107, 119, 0.04);
 }
 
-.dx-datagrid .dx-data-row > td {
+.dx-datagrid .dx-data-row>td {
   padding: 12px 16px;
 }
 

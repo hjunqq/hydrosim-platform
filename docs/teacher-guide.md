@@ -60,7 +60,62 @@ _注：Web 界面的批量导入功能正在开发中。_
 
 ---
 
-## 4. 监控与运维
+## 4. 系统结构与数据持久化
+
+### 4.1 系统结构概览
+平台核心由以下部分组成：
+1.  **门户前端/后端**：教师管理门户（Hydrosim Portal）。
+2.  **数据库**：门户数据库 + 学生项目数据库。
+3.  **K3s 集群**：部署学生项目与数据库的运行环境。
+4.  **对象存储**：MinIO 作为备份与归档存储。
+5.  **Ingress**：对外暴露访问域名。
+
+### 4.2 多租户隔离模型
+- **Namespace**：每个学生项目独立命名空间，例如 `student-<id>`。
+- **资源限制**：通过 `ResourceQuota + LimitRange` 限制 CPU/内存/存储。
+- **网络隔离**：`NetworkPolicy` 默认拒绝跨命名空间访问，仅允许同命名空间内互通。
+- **RBAC**：门户服务账号拥有学生命名空间内的 CRUD 权限。
+
+### 4.3 数据库持久化策略（默认 PostgreSQL）
+- **门户数据库**：StatefulSet + PVC，默认容量 **500Mi**。
+- **学生数据库**：每个学生项目单独一套 StatefulSet + PVC，默认容量 **500Mi**。
+- **存储类**：`local-path-retain`（本地持久化，PVC 删除后数据保留）。
+- **说明**：当前为单节点集群，节点宕机时服务不可用，但数据保留。
+
+### 4.4 学生侧应用配置规范
+学生应用只需选择数据库驱动并读取环境变量：
+```env
+DB_DRIVER=postgres
+DB_HOST=postgres
+DB_PORT=5432
+DB_NAME=student_<id>
+DB_USER=<username>
+DB_PASS=<password>
+```
+- 应用端口统一从 `PORT` 环境变量读取。
+
+### 4.5 备份策略（7/30）
+- **每日备份**：保留 7 天。
+- **每周备份**：保留 30 天。
+- 备份目标：MinIO（集群内访问）。
+- MinIO 环境变量配置：
+```env
+# MinIO 配置（集群内访问）
+MINIO_ENDPOINT=minio.infra.svc.cluster.local:9000
+MINIO_ACCESS_KEY=gNPmESQSdg6gILXcrsrO
+MINIO_SECRET_KEY=fF1dqgHhTehAkDqDE1MRQLK2XbLQJCCLuGeyMi4v
+MINIO_BUCKET=hydrosim-platform
+MINIO_SECURE=false
+```
+
+### 4.6 运维与支持
+- 门户内提示常见故障：`ImagePullBackOff` / `CrashLoopBackOff` / 数据库连接失败。
+- 自动显示命名空间资源使用情况。
+- 预留高级功能入口（后续）：一键备份 / 重建数据库 / 迁移数据。
+
+---
+
+## 5. 监控与运维
 
 ### 查看部署状态
 在列表页，您可以直观地看到每个项目的状态：
@@ -76,7 +131,7 @@ _注：Web 界面的批量导入功能正在开发中。_
 
 ---
 
-## 5. 常见问题 (FAQ)
+## 6. 常见问题 (FAQ)
 
 **Q: 部署显示 "ImagePullBackOff" 错误？**
 A: 通常是因为镜像地址错误，或者集群没有权限拉取该私有仓库的镜像。请检查 Image 字段是否正确。

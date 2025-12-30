@@ -6,6 +6,7 @@ export interface AdminProject extends Student {
     latest_deploy_status?: string
     latest_deploy_time?: string
     latest_deploy_message?: string
+    latest_deploy_id?: number
     running_image?: string
 }
 
@@ -17,7 +18,7 @@ export const adminProjectsApi = {
 
     async get(id: number) {
         const res = await request.get<AdminProject>(`/api/v1/admin/projects/${id}`);
-        return res as unknown as AdminProject;
+        return res as any as AdminProject;
     },
 
     async update(id: number, data: Partial<AdminProject>) {

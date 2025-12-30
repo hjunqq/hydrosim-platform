@@ -182,6 +182,8 @@ const AdminProjectsPage = () => {
                             showBorders={false}
                             focusedRowEnabled={true}
                             columnAutoWidth={true}
+                            allowColumnResizing={true}
+                            columnResizingMode="widget"
                             keyExpr="id"
                             rowAlternationEnabled={true}
                             noDataText="暂无项目数据"
@@ -190,179 +192,175 @@ const AdminProjectsPage = () => {
                             <FilterRow visible={true} />
                             <Paging defaultPageSize={10} />
 
-                        <Column dataField="student_code" caption="学号" width={120} />
-                        <Column dataField="name" caption="学生姓名" width={120} />
-                        <Column
-                            dataField="project_type"
-                            caption="项目类型"
-                            width={120}
-                            cellRender={(data) => (
-                                <span className={`tag ${data.value === 'gd' ? 'tag-blue' : 'tag-gray'} `}>
-                                    {data.value === 'gd' ? '毕业设计' : (data.value === 'cd' ? '课程设计' : data.value)}
-                                </span>
-                            )}
-                        />
-                        <Column
-                            dataField="git_repo_url"
-                            caption="Git 仓库"
-                            cellRender={(data) => (
-                                data.value ? (
-                                    <a href={data.value} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', textDecoration: 'none', color: '#1890ff' }}>
-                                        <i className="dx-icon-globe" style={{ marginRight: 5 }}></i>
-                                        查看
-                                    </a>
-                                ) : <span style={{ color: '#ccc' }}>-</span>
-                            )}
-                        />
-                        <Column
-                            dataField="running_image"
-                            caption="当前运行镜像"
-                            width={250}
-                            cellRender={(data) => (
-                                <div style={{ fontSize: 12, color: '#666', lineHeight: '1.4' }}>
-                                    {data.value ? data.value.split('\n').map((img: string, idx: number) => (
-                                        <div key={idx} style={{ marginBottom: 2 }}>{img}</div>
-                                    )) : '-'}
-                                </div>
-                            )}
-                        />
+                            <Column dataField="student_code" caption="学号" width={120} fixed={true} />
+                            <Column dataField="name" caption="学生姓名" width={120} fixed={true} />
+                            <Column
+                                dataField="project_type"
+                                caption="项目类型"
+                                width={120}
+                                cellRender={(data) => (
+                                    <span className={`tag ${data.value === 'gd' ? 'tag-blue' : 'tag-gray'} `}>
+                                        {data.value === 'gd' ? '毕业设计' : (data.value === 'cd' ? '课程设计' : data.value)}
+                                    </span>
+                                )}
+                            />
+                            <Column
+                                dataField="git_repo_url"
+                                caption="Git 仓库"
+                                cellRender={(data) => (
+                                    data.value ? (
+                                        <a href={data.value} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', textDecoration: 'none', color: '#1890ff' }}>
+                                            <i className="dx-icon-globe" style={{ marginRight: 5 }}></i>
+                                            查看
+                                        </a>
+                                    ) : <span style={{ color: '#ccc' }}>-</span>
+                                )}
+                            />
+                            <Column
+                                dataField="running_image"
+                                caption="当前运行镜像"
+                                width={250}
+                                cellRender={(data) => (
+                                    <div style={{ fontSize: 12, color: '#666', lineHeight: '1.4' }}>
+                                        {data.value ? data.value.split('\n').map((img: string, idx: number) => (
+                                            <div key={idx} style={{ marginBottom: 2 }}>{img}</div>
+                                        )) : '-'}
+                                    </div>
+                                )}
+                            />
 
-                        <Column
-                            dataField="latest_deploy_status"
-                            caption="部署状态"
-                            width={120}
-                            cellRender={statusCellRender}
-                            alignment="center"
-                        />
-                        <Column
-                            dataField="latest_deploy_time"
-                            caption="最后部署时间"
-                            dataType="datetime"
-                            format="yyyy-MM-dd HH:mm"
-                            width={160}
-                        />
-                        <Column
-                            dataField="created_at"
-                            caption="创建时间"
-                            dataType="datetime"
-                            format="yyyy-MM-dd HH:mm"
-                            width={160}
-                        />
-                        <Column
-                            dataField="latest_deploy_time"
-                            caption="最后部署时间"
-                            dataType="datetime"
-                            format="yyyy-MM-dd HH:mm"
-                            width={150}
-                        />
-                        <Column
-                            caption="操作"
-                            width={180}
-                            alignment="center"
-                            cellRender={(data) => (
-                                <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
-                                    <Button
-                                        text="监控"
-                                        type="normal"
-                                        stylingMode="outlined"
-                                        onClick={(e) => {
-                                            e.event?.stopPropagation();
-                                            navigate(`/projects/${data.data.id}/status`);
-                                        }}
-                                        height={24}
-                                        style={{ fontSize: 12 }}
-                                    />
-                                    < Button
-                                        text="编辑"
-                                        type="default"
-                                        stylingMode="outlined"
-                                        onClick={() => handleEditClick(data.data)}
-                                        disabled={data.data.id === 0} // Prevent editing system project
-                                        height={24}
-                                        style={{ fontSize: 12 }}
-                                    />
-                                </div>
-                            )}
-                        />
-                    </DataGrid>
-                )}
+                            <Column
+                                dataField="latest_deploy_status"
+                                caption="部署状态"
+                                width={120}
+                                cellRender={statusCellRender}
+                                alignment="center"
+                            />
+                            <Column
+                                dataField="latest_deploy_time"
+                                caption="最后部署时间"
+                                dataType="datetime"
+                                format="yyyy-MM-dd HH:mm"
+                                width={160}
+                            />
+                            <Column
+                                dataField="created_at"
+                                caption="创建时间"
+                                dataType="datetime"
+                                format="yyyy-MM-dd HH:mm"
+                                width={160}
+                            />
+
+                            <Column
+                                caption="操作"
+                                width={180}
+                                fixed={true}
+                                fixedPosition="right"
+                                alignment="center"
+                                cellRender={(data) => (
+                                    <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
+                                        <Button
+                                            text="监控"
+                                            type="normal"
+                                            stylingMode="outlined"
+                                            onClick={(e) => {
+                                                e.event?.stopPropagation();
+                                                navigate(`/projects/${data.data.id}/status`);
+                                            }}
+                                            height={24}
+                                            style={{ fontSize: 12 }}
+                                        />
+                                        <Button
+                                            text="编辑"
+                                            type="default"
+                                            stylingMode="outlined"
+                                            onClick={() => handleEditClick(data.data)}
+                                            disabled={data.data.id === 0} // Prevent editing system project
+                                            height={24}
+                                            style={{ fontSize: 12 }}
+                                        />
+                                    </div>
+                                )}
+                            />
+                        </DataGrid>
+                    )}
+                </div>
+
+                <Popup
+                    visible={isPopupVisible}
+                    onHiding={() => setIsPopupVisible(false)}
+                    title="编辑项目信息"
+                    showTitle={true}
+                    dragEnabled={false}
+                    width={500}
+                    height="auto"
+                >
+                    <form onSubmit={handleSave}>
+                        <Form formData={editingProject} onFieldDataChanged={onFormOptionChanged}>
+                            <FormItem dataField="name">
+                                <Label text="项目名称" />
+                                <RequiredRule message="名称不能为空" />
+                            </FormItem>
+                            <FormItem dataField="git_repo_url">
+                                <Label text="Git 仓库地址" />
+                                <RequiredRule message="Git地址不能为空" />
+                            </FormItem>
+                            <FormItem dataField="expected_image_name" helpText="若填写，将校验运行镜像是否包含该关键词">
+                                <Label text="预期镜像关键词 (可选验证)" />
+                            </FormItem>
+                            {/* More fields can be added here if backend supports them */}
+                            <div style={{ marginTop: 20, textAlign: 'right' }}>
+                                <button className="btn btn-primary" type="submit">保存更改</button>
+                            </div>
+                        </Form>
+                    </form>
+                </Popup>
+
+                <Popup
+                    visible={isCreatePopupVisible}
+                    onHiding={() => setIsCreatePopupVisible(false)}
+                    title="新建项目"
+                    showTitle={true}
+                    dragEnabled={false}
+                    width={500}
+                    height="auto"
+                >
+                    <form onSubmit={handleCreateSave}>
+                        <Form formData={newProject} onFieldDataChanged={handleNewProjectChange}>
+                            <FormItem dataField="student_code">
+                                <Label text="学号 (Student Code)" />
+                                <RequiredRule message="学号不能为空" />
+                            </FormItem>
+                            <FormItem dataField="name">
+                                <Label text="项目名称" />
+                                <RequiredRule message="名称不能为空" />
+                            </FormItem>
+                            <FormItem
+                                dataField="project_type"
+                                editorType="dxSelectBox"
+                                editorOptions={{
+                                    items: [{ id: 'gd', text: '毕业设计' }, { id: 'cd', text: '课程设计' }],
+                                    displayExpr: 'text',
+                                    valueExpr: 'id'
+                                }}
+                            >
+                                <Label text="项目类型" />
+                                <RequiredRule />
+                            </FormItem>
+                            <FormItem dataField="git_repo_url">
+                                <Label text="Git 仓库地址 (可选)" />
+                            </FormItem>
+                            <FormItem dataField="expected_image_name" helpText="若填写，将校验运行镜像是否包含该关键词">
+                                <Label text="预期镜像关键词 (可选验证)" />
+                            </FormItem>
+                            <div style={{ marginTop: 20, textAlign: 'right' }}>
+                                <button className="btn btn-primary" type="submit">创建项目</button>
+                            </div>
+                        </Form>
+                    </form>
+                </Popup>
             </div>
-
-            <Popup
-                visible={isPopupVisible}
-                onHiding={() => setIsPopupVisible(false)}
-                title="编辑项目信息"
-                showTitle={true}
-                dragEnabled={false}
-                width={500}
-                height="auto"
-            >
-                <form onSubmit={handleSave}>
-                    <Form formData={editingProject} onFieldDataChanged={onFormOptionChanged}>
-                        <FormItem dataField="name">
-                            <Label text="项目名称" />
-                            <RequiredRule message="名称不能为空" />
-                        </FormItem>
-                        <FormItem dataField="git_repo_url">
-                            <Label text="Git 仓库地址" />
-                            <RequiredRule message="Git地址不能为空" />
-                        </FormItem>
-                        <FormItem dataField="expected_image_name" helpText="若填写，将校验运行镜像是否包含该关键词">
-                            <Label text="预期镜像关键词 (可选验证)" />
-                        </FormItem>
-                        {/* More fields can be added here if backend supports them */}
-                        <div style={{ marginTop: 20, textAlign: 'right' }}>
-                            <button className="btn btn-primary" type="submit">保存更改</button>
-                        </div>
-                    </Form>
-                </form>
-            </Popup>
-
-            <Popup
-                visible={isCreatePopupVisible}
-                onHiding={() => setIsCreatePopupVisible(false)}
-                title="新建项目"
-                showTitle={true}
-                dragEnabled={false}
-                width={500}
-                height="auto"
-            >
-                <form onSubmit={handleCreateSave}>
-                    <Form formData={newProject} onFieldDataChanged={handleNewProjectChange}>
-                        <FormItem dataField="student_code">
-                            <Label text="学号 (Student Code)" />
-                            <RequiredRule message="学号不能为空" />
-                        </FormItem>
-                        <FormItem dataField="name">
-                            <Label text="项目名称" />
-                            <RequiredRule message="名称不能为空" />
-                        </FormItem>
-                        <FormItem
-                            dataField="project_type"
-                            editorType="dxSelectBox"
-                            editorOptions={{
-                                items: [{ id: 'gd', text: '毕业设计' }, { id: 'cd', text: '课程设计' }],
-                                displayExpr: 'text',
-                                valueExpr: 'id'
-                            }}
-                        >
-                            <Label text="项目类型" />
-                            <RequiredRule />
-                        </FormItem>
-                        <FormItem dataField="git_repo_url">
-                            <Label text="Git 仓库地址 (可选)" />
-                        </FormItem>
-                        <FormItem dataField="expected_image_name" helpText="若填写，将校验运行镜像是否包含该关键词">
-                            <Label text="预期镜像关键词 (可选验证)" />
-                        </FormItem>
-                        <div style={{ marginTop: 20, textAlign: 'right' }}>
-                            <button className="btn btn-primary" type="submit">创建项目</button>
-                        </div>
-                    </Form>
-                </form>
-            </Popup>
-        </div>
-    </>
+        </>
     );
 };
 

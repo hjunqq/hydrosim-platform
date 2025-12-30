@@ -150,6 +150,8 @@ const StudentsPage = () => {
                         showBorders={false}
                         focusedRowEnabled={true}
                         columnAutoWidth={true}
+                        allowColumnResizing={true}
+                        columnResizingMode="widget"
                         keyExpr="id"
                         rowAlternationEnabled={true}
                     >
@@ -157,8 +159,8 @@ const StudentsPage = () => {
                         <FilterRow visible={true} />
                         <Paging defaultPageSize={10} />
 
-                        <Column dataField="student_code" caption="学号" width={100} />
-                        <Column dataField="name" caption="姓名" width={100} />
+                        <Column dataField="student_code" caption="学号" width={120} fixed={true} />
+                        <Column dataField="name" caption="姓名" width={120} fixed={true} />
                         <Column
                             dataField="project_type"
                             caption="类型"
@@ -204,7 +206,7 @@ const StudentsPage = () => {
                         <Column
                             dataField="running_image"
                             caption="当前运行镜像"
-                            width={200}
+                            minWidth={250}
                             cellRender={(data) => (
                                 <div style={{ fontSize: 12, color: '#666', lineHeight: '1.4' }}>
                                     {data.value ? data.value.split('\n').map((img: string, idx: number) => (
@@ -256,6 +258,8 @@ const StudentsPage = () => {
                         <Column
                             caption="操作"
                             width={180}
+                            fixed={true}
+                            fixedPosition="right"
                             alignment="center"
                             cellRender={(data) => (
                                 <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>

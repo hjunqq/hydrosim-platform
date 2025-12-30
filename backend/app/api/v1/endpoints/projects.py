@@ -23,14 +23,21 @@ router = APIRouter()
 def list_projects(
     student_id: Optional[str] = None,
     db: Session = Depends(deps.get_db),
-    current_user: models.Teacher = Depends(get_current_user),
+    current_user = Depends(get_current_user),
 ):
     """
     查询项目列表 (List all student projects with latest deployment status)
     """
     query = db.query(models.Student)
     
-    # Filter (if needed)
+    # 权限控制: 如果是学生，只能查自己
+    if getattr(current_user, 'role', '') == 'student':
+        query = query.filter(models.Student.id == current_user.id)
+    # 如果是教师，只能查自己名下的学生 (除非管理员)
+    elif getattr(current_user, 'role', '') == 'teacher':
+        query = query.filter(models.Student.teacher_id == current_user.id)
+    
+    # Filter by optional query param (if allowed by role)
     if student_id:
         query = query.filter(models.Student.student_code == student_id)
         
@@ -61,6 +68,40 @@ def list_projects(
         results.append(project_data)
         
     return results
+
+@router.get("/me", response_model=ProjectOut)
+def get_my_project(
+    db: Session = Depends(deps.get_db),
+    current_user = Depends(get_current_user)
+):
+    """学生获取自己的项目详情"""
+    if getattr(current_user, 'role', '') != 'student':
+        raise HTTPException(status_code=403, detail="Only students can access /me")
+        
+    student = db.query(models.Student).filter(models.Student.id == current_user.id).first()
+    if not student:
+        raise HTTPException(status_code=404, detail="Student record not found")
+        
+    # Get latest deployment
+    latest_deploy = (
+        db.query(models.Deployment)
+        .filter(models.Deployment.student_id == student.id)
+        .order_by(desc(models.Deployment.created_at))
+        .first()
+    )
+    
+    return ProjectOut(
+        id=student.id,
+        student_code=student.student_code,
+        name=student.name,
+        project_type=student.project_type,
+        git_repo_url=student.git_repo_url,
+        domain=student.domain,
+        created_at=student.created_at,
+        latest_deploy_status=latest_deploy.status if latest_deploy else None,
+        latest_deploy_time=latest_deploy.created_at if latest_deploy else None,
+        latest_deploy_message=latest_deploy.message if latest_deploy else None
+    )
 
 
 @router.get("/{project_id}")

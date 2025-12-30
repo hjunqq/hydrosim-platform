@@ -15,7 +15,20 @@ class UserCreate(UserBase):
 
 class User(UserBase):
     id: int
+    full_name: Optional[str] = None
+    department: Optional[str] = None
+    phone: Optional[str] = None
     created_at: datetime
 
     class Config:
         from_attributes = True
+
+class UserUpdate(BaseModel):
+    email: Optional[EmailStr] = None
+    full_name: Optional[str] = None
+    department: Optional[str] = None
+    phone: Optional[str] = None
+
+class UserUpdatePassword(BaseModel):
+    current_password: str
+    new_password: str
