@@ -27,6 +27,10 @@ git push -u origin main
 Step 0.1: 配置 Gitea Actions 自动部署（推荐）
 目标：代码 push 后自动构建镜像，并直接部署到 k3s。
 
+**运行器要求（必须）**
+- 本文使用 **k3s 内部构建（kaniko）**，不再依赖 runner 上的 Docker
+- runner 只需要能访问 Kubernetes API（kubectl）并具备创建 Job/Secret 的权限
+
 **准备 CI 专用 kubeconfig（一次性）**
 ```bash
 # 创建 CI ServiceAccount
@@ -76,6 +80,8 @@ Windows PowerShell（已生成 kubeconfig 文件时）：
 
 **在 Gitea 仓库配置 Secrets**
 - `REGISTRY`, `REGISTRY_USERNAME`, `REGISTRY_PASSWORD`
+- `REGISTRY` 可填写 `host:port`，如是 http 或自签证书，设置 `REGISTRY_INSECURE=true`
+- `REGISTRY_INSECURE`（可选，设为 `true` 时 kaniko 使用 `--insecure/--skip-tls-verify`）
 - `KUBECONFIG_DATA`（上一步 base64 输出）
 - `KUBE_SERVER`（可选，覆盖 kubeconfig 里的 server）
 - `KUBE_INSECURE`（可选，设为 `true` 可跳过 k3s 自签证书校验）
@@ -85,6 +91,7 @@ Windows PowerShell（已生成 kubeconfig 文件时）：
 - `GITEA_REPOSITORY`（可选，格式：`owner/repo`）
 - `GITEA_CA_CERT`（可选，自签证书 PEM）
 - `GIT_SSL_NO_VERIFY`（可选，设为 `true` 可临时跳过 Git SSL 校验）
+- `REGISTRY_CA_CERT`（可选，私有镜像仓库自签证书 PEM，如使用 `REGISTRY_INSECURE` 可省略）
 - `MINIO_ENDPOINT`, `MINIO_BUCKET`, `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY`（如无需可留空）
 - `DEPLOY_TRIGGER_TOKEN`（用于学生仓库自动部署）
 - `RUN_DB_MIGRATION`（可选，设为 `true`）
@@ -206,6 +213,21 @@ kubectl -n students-gd scale deployment student-s2025_001 --replicas=0
 
 Step 13: 学生仓库自动部署（推荐）
 参考：`docs/technical_design/student_auto_deploy.md`
+
+Step 14: 工作流本地测试（可选）
+如需在本地验证 workflow，可使用 `act`：
+```bash
+act -W .gitea/workflows/portal-deploy.yaml -j build-and-deploy \
+  -s REGISTRY=registry.hydrosim.cn \
+  -s REGISTRY_USERNAME=xxx \
+  -s REGISTRY_PASSWORD=xxx \
+  -s GITEA_URL=https://gitea.example.com \
+  -s GITEA_REPOSITORY=owner/hydrosim-platform \
+  -s GITEA_TOKEN=xxx \
+  -s KUBECONFIG_DATA=<base64>
+```
+注意：本地运行会直接访问真实 k3s 集群并创建 Job/Secret。
+也可以在 Gitea 页面使用 `workflow_dispatch` 手动触发，无需额外 push。
 
 删除学生项目资源：
 ```

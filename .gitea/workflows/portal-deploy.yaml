@@ -17,6 +17,9 @@ concurrency:
 jobs:
   build-and-deploy:
     runs-on: linux
+    defaults:
+      run:
+        shell: sh
     env:
       REGISTRY: ${{ secrets.REGISTRY }}
       BACKEND_IMAGE: ${{ secrets.REGISTRY }}/hydrosim-portal-backend
@@ -61,6 +64,30 @@ jobs:
             echo "docker not found"
           fi
 
+      - name: Normalize registry config
+        shell: sh
+        env:
+          REGISTRY: ${{ secrets.REGISTRY }}
+        run: |
+          set -e
+          if [ -z "${REGISTRY:-}" ]; then
+            echo "Missing REGISTRY secret."
+            exit 1
+          fi
+          REGISTRY_INSECURE_EFFECTIVE="false"
+          if echo "$REGISTRY" | grep -q '^http://'; then
+            REGISTRY_INSECURE_EFFECTIVE="true"
+          fi
+          REGISTRY_HOST="${REGISTRY#https://}"
+          REGISTRY_HOST="${REGISTRY_HOST#http://}"
+          if [ "${{ secrets.REGISTRY_INSECURE }}" = "true" ]; then
+            REGISTRY_INSECURE_EFFECTIVE="true"
+          fi
+          echo "REGISTRY_HOST=$REGISTRY_HOST" >> "$GITHUB_ENV"
+          echo "BACKEND_IMAGE=$REGISTRY_HOST/hydrosim-portal-backend" >> "$GITHUB_ENV"
+          echo "FRONTEND_IMAGE=$REGISTRY_HOST/hydrosim-portal-frontend" >> "$GITHUB_ENV"
+          echo "REGISTRY_INSECURE_EFFECTIVE=$REGISTRY_INSECURE_EFFECTIVE" >> "$GITHUB_ENV"
+
       - name: Checkout (manual)
         shell: sh
         env:
@@ -89,26 +116,13 @@ jobs:
           FETCH_REF="${GITHUB_SHA:-${GITHUB_REF:-refs/heads/main}}"
           if [ -n "${GITEA_TOKEN:-}" ]; then
             USERNAME="${GITEA_USERNAME:-oauth2}"
-            AUTH="$(printf "%s:%s" "$USERNAME" "$GITEA_TOKEN" | base64 -w0)"
+            AUTH="$(printf "%s:%s" "$USERNAME" "$GITEA_TOKEN" | base64 | tr -d '\n')"
             git -c http.extraHeader="Authorization: Basic $AUTH" fetch --depth 1 origin "$FETCH_REF"
             git -c http.extraHeader="Authorization: Basic $AUTH" checkout -q FETCH_HEAD
           else
             git fetch --depth 1 origin "$FETCH_REF"
             git checkout -q FETCH_HEAD
           fi
-
-      - name: Login to registry
-        run: echo "${{ secrets.REGISTRY_PASSWORD }}" | docker login "$REGISTRY" -u "${{ secrets.REGISTRY_USERNAME }}" --password-stdin
-
-      - name: Build & push backend
-        run: |
-          docker build -t "$BACKEND_IMAGE:${IMAGE_TAG}" ./backend
-          docker push "$BACKEND_IMAGE:${IMAGE_TAG}"
-
-      - name: Build & push frontend
-        run: |
-          docker build -t "$FRONTEND_IMAGE:${IMAGE_TAG}" ./frontend
-          docker push "$FRONTEND_IMAGE:${IMAGE_TAG}"
 
       - name: Ensure kubectl
         shell: sh
@@ -137,6 +151,7 @@ jobs:
 
       - name: Configure kubeconfig
         run: |
+          set -e
           echo "${{ secrets.KUBECONFIG_DATA }}" | base64 -d > "$RUNNER_TEMP/kubeconfig"
           if [ -n "${{ secrets.KUBE_SERVER }}" ]; then
             CLUSTER="$(KUBECONFIG=$RUNNER_TEMP/kubeconfig kubectl config get-clusters | tail -n +2 | head -n 1)"
@@ -148,11 +163,267 @@ jobs:
           fi
           echo "KUBECONFIG=$RUNNER_TEMP/kubeconfig" >> $GITHUB_ENV
 
+      - name: Debug kubeconfig
+        run: |
+          set +e
+          ls -la "$RUNNER_TEMP/kubeconfig"
+          echo "KUBECONFIG=$KUBECONFIG"
+          kubectl config get-contexts || true
+          kubectl config current-context || true
+          kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}{"\n"}' || true
+          kubectl config view --minify -o jsonpath='{.users[0].name}{"\n"}' || true
+
       - name: Verify cluster access
         run: |
-          kubectl version --client
-          kubectl cluster-info
-          kubectl get nodes -o wide
+          set -e
+          set -x
+          if ! command -v kubectl >/dev/null 2>&1; then
+            echo "kubectl not found in PATH."
+            exit 1
+          fi
+          kubectl version --client --output=yaml
+          kubectl cluster-info --request-timeout=5s
+          kubectl get nodes -o wide --request-timeout=5s
+
+      - name: Prepare in-cluster build secrets
+        shell: sh
+        env:
+          REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
+          REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
+          GITEA_URL: ${{ secrets.GITEA_URL }}
+          GITEA_REPOSITORY: ${{ secrets.GITEA_REPOSITORY }}
+          GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}
+          GITEA_USERNAME: ${{ secrets.GITEA_USERNAME }}
+          GIT_SSL_NO_VERIFY: ${{ secrets.GIT_SSL_NO_VERIFY }}
+        run: |
+          set -e
+          if [ -z "${REGISTRY_USERNAME:-}" ] || [ -z "${REGISTRY_PASSWORD:-}" ]; then
+            echo "Missing REGISTRY_USERNAME or REGISTRY_PASSWORD."
+            exit 1
+          fi
+          if [ -z "${GITEA_URL:-}" ] || [ -z "${GITEA_REPOSITORY:-}" ]; then
+            echo "Missing GITEA_URL or GITEA_REPOSITORY."
+            exit 1
+          fi
+          GIT_CLONE_URL="${GITEA_URL%/}/${GITEA_REPOSITORY}.git"
+          kubectl -n hydrosim create secret docker-registry kaniko-registry-auth \
+            --docker-server="$REGISTRY_HOST" \
+            --docker-username="$REGISTRY_USERNAME" \
+            --docker-password="$REGISTRY_PASSWORD" \
+            --dry-run=client -o yaml | kubectl apply -f -
+          kubectl -n hydrosim create secret generic portal-git-credentials \
+            --from-literal=GIT_CLONE_URL="$GIT_CLONE_URL" \
+            --from-literal=GIT_USERNAME="${GITEA_USERNAME:-oauth2}" \
+            --from-literal=GIT_TOKEN="${GITEA_TOKEN:-}" \
+            --from-literal=GIT_REF="${GITHUB_SHA}" \
+            --from-literal=GIT_SSL_NO_VERIFY="${GIT_SSL_NO_VERIFY:-}" \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Build backend image in k3s (kaniko)
+        shell: sh
+        run: |
+          set -e
+          kubectl -n hydrosim delete job portal-build-backend --ignore-not-found
+          cat <<EOF | kubectl apply -f -
+          apiVersion: batch/v1
+          kind: Job
+          metadata:
+            name: portal-build-backend
+            namespace: hydrosim
+          spec:
+            backoffLimit: 0
+            ttlSecondsAfterFinished: 300
+            template:
+              spec:
+                restartPolicy: Never
+                volumes:
+                  - name: workspace
+                    emptyDir: {}
+                  - name: docker-config
+                    secret:
+                      secretName: kaniko-registry-auth
+                      items:
+                        - key: .dockerconfigjson
+                          path: config.json
+                initContainers:
+                  - name: git-clone
+                    image: alpine/git:2.45.2
+                    env:
+                      - name: GIT_CLONE_URL
+                        valueFrom:
+                          secretKeyRef:
+                            name: portal-git-credentials
+                            key: GIT_CLONE_URL
+                      - name: GIT_USERNAME
+                        valueFrom:
+                          secretKeyRef:
+                            name: portal-git-credentials
+                            key: GIT_USERNAME
+                      - name: GIT_TOKEN
+                        valueFrom:
+                          secretKeyRef:
+                            name: portal-git-credentials
+                            key: GIT_TOKEN
+                      - name: GIT_REF
+                        valueFrom:
+                          secretKeyRef:
+                            name: portal-git-credentials
+                            key: GIT_REF
+                      - name: GIT_SSL_NO_VERIFY
+                        valueFrom:
+                          secretKeyRef:
+                            name: portal-git-credentials
+                            key: GIT_SSL_NO_VERIFY
+                    command: ["sh", "-c"]
+                    args:
+                      - |
+                        set -e
+                        export GIT_SSL_NO_VERIFY="${GIT_SSL_NO_VERIFY:-}"
+                        cd /workspace
+                        git init
+                        git remote add origin "$GIT_CLONE_URL"
+                        if [ -n "$GIT_TOKEN" ]; then
+                          AUTH="$(printf "%s:%s" "$GIT_USERNAME" "$GIT_TOKEN" | base64 | tr -d '\n')"
+                          git -c http.extraHeader="Authorization: Basic $AUTH" fetch --depth 1 origin "$GIT_REF"
+                          git -c http.extraHeader="Authorization: Basic $AUTH" checkout -q FETCH_HEAD
+                        else
+                          git fetch --depth 1 origin "$GIT_REF"
+                          git checkout -q FETCH_HEAD
+                        fi
+                    volumeMounts:
+                      - name: workspace
+                        mountPath: /workspace
+                containers:
+                  - name: kaniko
+                    image: gcr.io/kaniko-project/executor:v1.23.2
+                    env:
+                      - name: BACKEND_IMAGE
+                        value: "$BACKEND_IMAGE"
+                      - name: IMAGE_TAG
+                        value: "$IMAGE_TAG"
+                      - name: REGISTRY_INSECURE
+                        value: "$REGISTRY_INSECURE_EFFECTIVE"
+                    args:
+                      - --context=dir:///workspace
+                      - --dockerfile=backend/Dockerfile
+                      - --destination=$(BACKEND_IMAGE):$(IMAGE_TAG)
+                      - --snapshotMode=redo
+                      - --verbosity=info
+                      - --insecure=$(REGISTRY_INSECURE)
+                      - --skip-tls-verify=$(REGISTRY_INSECURE)
+                    volumeMounts:
+                      - name: workspace
+                        mountPath: /workspace
+                      - name: docker-config
+                        mountPath: /kaniko/.docker
+          EOF
+          if ! kubectl -n hydrosim wait --for=condition=complete job/portal-build-backend --timeout=1200s; then
+            kubectl -n hydrosim logs job/portal-build-backend --all-containers || true
+            exit 1
+          fi
+
+      - name: Build frontend image in k3s (kaniko)
+        shell: sh
+        run: |
+          set -e
+          kubectl -n hydrosim delete job portal-build-frontend --ignore-not-found
+          cat <<EOF | kubectl apply -f -
+          apiVersion: batch/v1
+          kind: Job
+          metadata:
+            name: portal-build-frontend
+            namespace: hydrosim
+          spec:
+            backoffLimit: 0
+            ttlSecondsAfterFinished: 300
+            template:
+              spec:
+                restartPolicy: Never
+                volumes:
+                  - name: workspace
+                    emptyDir: {}
+                  - name: docker-config
+                    secret:
+                      secretName: kaniko-registry-auth
+                      items:
+                        - key: .dockerconfigjson
+                          path: config.json
+                initContainers:
+                  - name: git-clone
+                    image: alpine/git:2.45.2
+                    env:
+                      - name: GIT_CLONE_URL
+                        valueFrom:
+                          secretKeyRef:
+                            name: portal-git-credentials
+                            key: GIT_CLONE_URL
+                      - name: GIT_USERNAME
+                        valueFrom:
+                          secretKeyRef:
+                            name: portal-git-credentials
+                            key: GIT_USERNAME
+                      - name: GIT_TOKEN
+                        valueFrom:
+                          secretKeyRef:
+                            name: portal-git-credentials
+                            key: GIT_TOKEN
+                      - name: GIT_REF
+                        valueFrom:
+                          secretKeyRef:
+                            name: portal-git-credentials
+                            key: GIT_REF
+                      - name: GIT_SSL_NO_VERIFY
+                        valueFrom:
+                          secretKeyRef:
+                            name: portal-git-credentials
+                            key: GIT_SSL_NO_VERIFY
+                    command: ["sh", "-c"]
+                    args:
+                      - |
+                        set -e
+                        export GIT_SSL_NO_VERIFY="${GIT_SSL_NO_VERIFY:-}"
+                        cd /workspace
+                        git init
+                        git remote add origin "$GIT_CLONE_URL"
+                        if [ -n "$GIT_TOKEN" ]; then
+                          AUTH="$(printf "%s:%s" "$GIT_USERNAME" "$GIT_TOKEN" | base64 | tr -d '\n')"
+                          git -c http.extraHeader="Authorization: Basic $AUTH" fetch --depth 1 origin "$GIT_REF"
+                          git -c http.extraHeader="Authorization: Basic $AUTH" checkout -q FETCH_HEAD
+                        else
+                          git fetch --depth 1 origin "$GIT_REF"
+                          git checkout -q FETCH_HEAD
+                        fi
+                    volumeMounts:
+                      - name: workspace
+                        mountPath: /workspace
+                containers:
+                  - name: kaniko
+                    image: gcr.io/kaniko-project/executor:v1.23.2
+                    env:
+                      - name: FRONTEND_IMAGE
+                        value: "$FRONTEND_IMAGE"
+                      - name: IMAGE_TAG
+                        value: "$IMAGE_TAG"
+                      - name: REGISTRY_INSECURE
+                        value: "$REGISTRY_INSECURE_EFFECTIVE"
+                    args:
+                      - --context=dir:///workspace
+                      - --dockerfile=frontend/Dockerfile
+                      - --destination=$(FRONTEND_IMAGE):$(IMAGE_TAG)
+                      - --snapshotMode=redo
+                      - --verbosity=info
+                      - --insecure=$(REGISTRY_INSECURE)
+                      - --skip-tls-verify=$(REGISTRY_INSECURE)
+                    volumeMounts:
+                      - name: workspace
+                        mountPath: /workspace
+                      - name: docker-config
+                        mountPath: /kaniko/.docker
+          EOF
+          if ! kubectl -n hydrosim wait --for=condition=complete job/portal-build-frontend --timeout=1200s; then
+            kubectl -n hydrosim logs job/portal-build-frontend --all-containers || true
+            exit 1
+          fi
 
       - name: Apply base and postgres manifests
         run: |
