@@ -9,6 +9,9 @@ export interface Student {
     expected_image_name?: string
     domain?: string
     created_at: string
+    latest_deploy_status?: string
+    latest_deploy_message?: string
+    running_image?: string
 }
 
 export interface Teacher {
@@ -28,22 +31,22 @@ export interface CreateStudentParams {
 
 export const studentsApi = {
     list(params?: { project_type?: string }) {
-        return request.get<Student[]>('/api/v1/students', { params })
+        return request.get<Student[]>('/api/v1/students/', { params })
     },
 
     get(id: number) {
-        return request.get<Student>(`/api/v1/students/${id}`)
+        return request.get<Student>(`/api/v1/students/${id}/`)
     },
 
     create(data: CreateStudentParams) {
-        return request.post<Student>('/api/v1/students', data)
+        return request.post<Student>('/api/v1/students/', data)
     },
 
     update(id: number, data: Partial<CreateStudentParams>) {
-        return request.put<Student>(`/api/v1/students/${id}`, data)
+        return request.put<Student>(`/api/v1/students/${id}/`, data)
     },
 
     delete(id: number) {
-        return request.delete(`/api/v1/students/${id}`)
+        return request.delete(`/api/v1/students/${id}/`)
     }
 }

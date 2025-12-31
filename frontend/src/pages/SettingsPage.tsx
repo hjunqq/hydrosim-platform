@@ -88,6 +88,12 @@ const SettingsPage: React.FC = () => {
                                 <FormItem dataField="domain_name" editorType="dxTextBox" editorOptions={{ stylingMode: 'filled' }}>
                                     <Label text="门户访问域名" />
                                 </FormItem>
+                                <FormItem dataField="student_domain_prefix" editorType="dxTextBox" editorOptions={{ stylingMode: 'filled' }}>
+                                    <Label text="学生域名前缀" />
+                                </FormItem>
+                                <FormItem dataField="student_domain_base" editorType="dxTextBox" editorOptions={{ stylingMode: 'filled' }}>
+                                    <Label text="学生域名后缀" />
+                                </FormItem>
                                 <FormItem dataField="timezone" editorType="dxSelectBox"
                                     editorOptions={{
                                         items: ['Asia/Shanghai', 'UTC', 'America/New_York'],

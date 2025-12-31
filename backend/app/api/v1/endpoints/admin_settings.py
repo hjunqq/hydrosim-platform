@@ -5,36 +5,28 @@ from app.api import deps, admin_deps, auth_deps
 from app.schemas.setting import SystemSettingRead, SystemSettingUpdate
 from app.schemas.semester import SemesterRead, SemesterCreate, SemesterUpdate
 from app import models
+from app.services.system_settings import get_or_create_settings
 
 router = APIRouter()
 
 # --- System Settings ---
 
-@router.get("/settings", response_model=SystemSettingRead)
+@router.get("/settings/", response_model=SystemSettingRead)
 def get_system_settings(
     db: Session = Depends(deps.get_db),
     current_user = Depends(admin_deps.get_current_admin)
 ):
     """获取系统全局设置"""
-    settings = db.query(models.SystemSetting).first()
-    if not settings:
-        # Initial default if none exist
-        settings = models.SystemSetting()
-        db.add(settings)
-        db.commit()
-        db.refresh(settings)
-    return settings
+    return get_or_create_settings(db)
 
-@router.put("/settings", response_model=SystemSettingRead)
+@router.put("/settings/", response_model=SystemSettingRead)
 def update_system_settings(
     setting_in: SystemSettingUpdate,
     db: Session = Depends(deps.get_db),
     current_user = Depends(admin_deps.get_current_admin)
 ):
     """更新系统全局设置"""
-    settings = db.query(models.SystemSetting).first()
-    if not settings:
-        settings = models.SystemSetting()
+    settings = get_or_create_settings(db)
     
     update_data = setting_in.dict(exclude_unset=True)
     for field, value in update_data.items():
@@ -47,14 +39,14 @@ def update_system_settings(
 
 # --- Semesters ---
 
-@router.get("/semesters", response_model=List[SemesterRead])
+@router.get("/semesters/", response_model=List[SemesterRead])
 def list_semesters(
     db: Session = Depends(deps.get_db),
     current_user = Depends(auth_deps.get_current_user)
 ):
     return db.query(models.Semester).all()
 
-@router.post("/semesters", response_model=SemesterRead)
+@router.post("/semesters/", response_model=SemesterRead)
 def create_semester(
     semester_in: SemesterCreate,
     db: Session = Depends(deps.get_db),
@@ -66,7 +58,7 @@ def create_semester(
     db.refresh(semester)
     return semester
 
-@router.put("/semesters/{semester_id}", response_model=SemesterRead)
+@router.put("/semesters/{semester_id}/", response_model=SemesterRead)
 def update_semester(
     semester_id: int,
     semester_in: SemesterUpdate,
@@ -86,7 +78,7 @@ def update_semester(
     db.refresh(semester)
     return semester
 
-@router.delete("/semesters/{semester_id}", response_model=bool)
+@router.delete("/semesters/{semester_id}/", response_model=bool)
 def delete_semester(
     semester_id: int,
     db: Session = Depends(deps.get_db),

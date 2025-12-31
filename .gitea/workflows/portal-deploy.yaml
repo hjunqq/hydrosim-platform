@@ -1,0 +1,201 @@
+﻿name: Portal Build & Deploy (k3s)
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'backend/**'
+      - 'frontend/**'
+      - 'deploy/**'
+      - '.gitea/workflows/portal-deploy.yaml'
+  workflow_dispatch:
+
+concurrency:
+  group: portal-deploy
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    runs-on: linux
+    env:
+      REGISTRY: ${{ secrets.REGISTRY }}
+      BACKEND_IMAGE: ${{ secrets.REGISTRY }}/hydrosim-portal-backend
+      FRONTEND_IMAGE: ${{ secrets.REGISTRY }}/hydrosim-portal-frontend
+      IMAGE_TAG: ${{ github.sha }}
+    steps:
+      - name: Trust Gitea CA (optional)
+        if: ${{ secrets.GITEA_CA_CERT != '' }}
+        run: |
+          set +e
+          echo "${{ secrets.GITEA_CA_CERT }}" > "$RUNNER_TEMP/gitea.crt"
+          if command -v update-ca-certificates >/dev/null 2>&1; then
+            cp "$RUNNER_TEMP/gitea.crt" /usr/local/share/ca-certificates/gitea.crt || true
+            update-ca-certificates || true
+          elif command -v update-ca-trust >/dev/null 2>&1; then
+            cp "$RUNNER_TEMP/gitea.crt" /etc/pki/ca-trust/source/anchors/gitea.crt || true
+            update-ca-trust || true
+          else
+            echo "No system CA update tool found. Consider setting GIT_SSL_NO_VERIFY=true."
+          fi
+
+      - name: Debug runner context
+        shell: sh
+        run: |
+          set -e
+          echo "GITHUB_SERVER_URL=${GITHUB_SERVER_URL:-}"
+          echo "GITHUB_REPOSITORY=${GITHUB_REPOSITORY:-}"
+          echo "GITHUB_REF=${GITHUB_REF:-}"
+          echo "GITEA_SERVER_URL=${GITEA_SERVER_URL:-}"
+          uname -a || true
+          id || true
+          pwd
+          ls -la
+          if command -v git >/dev/null 2>&1; then
+            git --version
+          else
+            echo "git not found"
+          fi
+          if command -v docker >/dev/null 2>&1; then
+            docker --version
+          else
+            echo "docker not found"
+          fi
+
+      - name: Checkout (manual)
+        shell: sh
+        env:
+          GIT_SSL_NO_VERIFY: ${{ secrets.GIT_SSL_NO_VERIFY }}
+          GITEA_URL: ${{ secrets.GITEA_URL }}
+          GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}
+          GITEA_USERNAME: ${{ secrets.GITEA_USERNAME }}
+          GITEA_REPOSITORY: ${{ secrets.GITEA_REPOSITORY }}
+        run: |
+          set -e
+          WORKDIR="${GITHUB_WORKSPACE:-$PWD}"
+          mkdir -p "$WORKDIR"
+          cd "$WORKDIR"
+          REPO_URL=""
+          if [ -n "${GITHUB_SERVER_URL:-}" ] && [ -n "${GITHUB_REPOSITORY:-}" ]; then
+            REPO_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git"
+          elif [ -n "${GITEA_URL:-}" ] && [ -n "${GITEA_REPOSITORY:-}" ]; then
+            REPO_URL="${GITEA_URL}/${GITEA_REPOSITORY}.git"
+          fi
+          if [ -z "$REPO_URL" ]; then
+            echo "Missing repository info. Provide GITHUB_SERVER_URL/GITHUB_REPOSITORY or GITEA_URL/GITEA_REPOSITORY."
+            exit 1
+          fi
+          git init
+          git remote add origin "$REPO_URL"
+          FETCH_REF="${GITHUB_SHA:-${GITHUB_REF:-refs/heads/main}}"
+          if [ -n "${GITEA_TOKEN:-}" ]; then
+            USERNAME="${GITEA_USERNAME:-oauth2}"
+            AUTH="$(printf "%s:%s" "$USERNAME" "$GITEA_TOKEN" | base64 -w0)"
+            git -c http.extraHeader="Authorization: Basic $AUTH" fetch --depth 1 origin "$FETCH_REF"
+            git -c http.extraHeader="Authorization: Basic $AUTH" checkout -q FETCH_HEAD
+          else
+            git fetch --depth 1 origin "$FETCH_REF"
+            git checkout -q FETCH_HEAD
+          fi
+
+      - name: Login to registry
+        run: echo "${{ secrets.REGISTRY_PASSWORD }}" | docker login "$REGISTRY" -u "${{ secrets.REGISTRY_USERNAME }}" --password-stdin
+
+      - name: Build & push backend
+        run: |
+          docker build -t "$BACKEND_IMAGE:${IMAGE_TAG}" ./backend
+          docker push "$BACKEND_IMAGE:${IMAGE_TAG}"
+
+      - name: Build & push frontend
+        run: |
+          docker build -t "$FRONTEND_IMAGE:${IMAGE_TAG}" ./frontend
+          docker push "$FRONTEND_IMAGE:${IMAGE_TAG}"
+
+      - name: Ensure kubectl
+        shell: sh
+        run: |
+          set -e
+          if command -v kubectl >/dev/null 2>&1; then
+            kubectl version --client
+            exit 0
+          fi
+          ARCH="$(uname -m)"
+          case "$ARCH" in
+            x86_64|amd64) ARCH=amd64 ;;
+            aarch64|arm64) ARCH=arm64 ;;
+          esac
+          KUBECTL_BIN="$RUNNER_TEMP/kubectl"
+          if command -v curl >/dev/null 2>&1; then
+            curl -fsSL "https://dl.k8s.io/release/v1.27.0/bin/linux/$ARCH/kubectl" -o "$KUBECTL_BIN"
+          elif command -v wget >/dev/null 2>&1; then
+            wget -qO "$KUBECTL_BIN" "https://dl.k8s.io/release/v1.27.0/bin/linux/$ARCH/kubectl"
+          else
+            echo "curl or wget is required to download kubectl."
+            exit 1
+          fi
+          chmod +x "$KUBECTL_BIN"
+          echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
+
+      - name: Configure kubeconfig
+        run: |
+          echo "${{ secrets.KUBECONFIG_DATA }}" | base64 -d > "$RUNNER_TEMP/kubeconfig"
+          if [ -n "${{ secrets.KUBE_SERVER }}" ]; then
+            CLUSTER="$(KUBECONFIG=$RUNNER_TEMP/kubeconfig kubectl config get-clusters | tail -n +2 | head -n 1)"
+            KUBECONFIG=$RUNNER_TEMP/kubeconfig kubectl config set-cluster "$CLUSTER" --server="${{ secrets.KUBE_SERVER }}"
+          fi
+          if [ "${{ secrets.KUBE_INSECURE }}" = "true" ]; then
+            CLUSTER="$(KUBECONFIG=$RUNNER_TEMP/kubeconfig kubectl config get-clusters | tail -n +2 | head -n 1)"
+            KUBECONFIG=$RUNNER_TEMP/kubeconfig kubectl config set-cluster "$CLUSTER" --insecure-skip-tls-verify=true
+          fi
+          echo "KUBECONFIG=$RUNNER_TEMP/kubeconfig" >> $GITHUB_ENV
+
+      - name: Verify cluster access
+        run: |
+          kubectl version --client
+          kubectl cluster-info
+          kubectl get nodes -o wide
+
+      - name: Apply base and postgres manifests
+        run: |
+          kubectl apply -f deploy/base/
+          if [ "${{ secrets.APPLY_POSTGRES }}" != "false" ]; then
+            kubectl apply -f deploy/infra/postgres.yaml
+          fi
+
+      - name: Apply backend config and secrets
+        run: |
+          kubectl -n hydrosim create secret generic portal-backend-secret \
+            --from-literal=DATABASE_URL="${{ secrets.DATABASE_URL }}" \
+            --from-literal=JWT_SECRET_KEY="${{ secrets.JWT_SECRET_KEY }}" \
+            --from-literal=MINIO_ACCESS_KEY="${{ secrets.MINIO_ACCESS_KEY }}" \
+            --from-literal=MINIO_SECRET_KEY="${{ secrets.MINIO_SECRET_KEY }}" \
+            --from-literal=GITEA_TOKEN="${{ secrets.GITEA_TOKEN }}" \
+            --from-literal=DEPLOY_TRIGGER_TOKEN="${{ secrets.DEPLOY_TRIGGER_TOKEN }}" \
+            --dry-run=client -o yaml | kubectl apply -f -
+          kubectl -n hydrosim create configmap portal-backend-config \
+            --from-literal=PORTAL_ENV=production \
+            --from-literal=K8S_IN_CLUSTER=true \
+            --from-literal=K8S_NAMESPACE=hydrosim \
+            --from-literal=GITEA_URL="${{ secrets.GITEA_URL }}" \
+            --from-literal=MINIO_ENDPOINT="${{ secrets.MINIO_ENDPOINT }}" \
+            --from-literal=MINIO_BUCKET="${{ secrets.MINIO_BUCKET }}" \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Deploy backend
+        run: |
+          kubectl apply -f deploy/backend/deployment.yaml -f deploy/backend/service.yaml
+          kubectl -n hydrosim set image deploy/portal-backend portal-backend="$BACKEND_IMAGE:${IMAGE_TAG}"
+          kubectl -n hydrosim rollout status deploy/portal-backend --timeout=180s
+
+      - name: Deploy frontend
+        run: |
+          kubectl apply -f deploy/frontend/deployment.yaml -f deploy/frontend/service.yaml
+          kubectl -n hydrosim set image deploy/portal-frontend portal-frontend="$FRONTEND_IMAGE:${IMAGE_TAG}"
+          kubectl -n hydrosim rollout status deploy/portal-frontend --timeout=180s
+
+      - name: Apply ingress
+        run: kubectl apply -f deploy/ingress/
+
+      - name: Migrate DB (optional)
+        if: ${{ secrets.RUN_DB_MIGRATION == 'true' }}
+        run: |
+          kubectl -n hydrosim exec deploy/portal-backend -- alembic upgrade head

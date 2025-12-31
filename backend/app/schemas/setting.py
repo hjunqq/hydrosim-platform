@@ -6,6 +6,8 @@ class SystemSettingBase(BaseModel):
     portal_title: Optional[str] = None
     env_type: Optional[str] = None
     domain_name: Optional[str] = None
+    student_domain_prefix: Optional[str] = None
+    student_domain_base: Optional[str] = None
     contact_email: Optional[EmailStr] = None
     help_url: Optional[str] = None
     footer_text: Optional[str] = None

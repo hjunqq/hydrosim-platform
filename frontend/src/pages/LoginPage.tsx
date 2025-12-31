@@ -22,7 +22,14 @@ const LoginPage = () => {
     try {
       await login({ username, password })
       notify('登录成功', 'success', 1000)
-      navigate('/dashboard')
+
+      // Redirect based on role
+      const user = JSON.parse(localStorage.getItem('user') || '{}')
+      if (user.role === 'student' && user.id) {
+        navigate(`/projects/${user.id}/status`)
+      } else {
+        navigate('/dashboard')
+      }
     } catch (err: any) {
       const msg = err.response?.data?.detail || '登录失败，请检查账号密码'
       notify(msg, 'error', 3000)

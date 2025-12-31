@@ -10,7 +10,7 @@
 ### 核心流程
 1.  **创建项目**: 录入学生信息和 Git 仓库地址。
 2.  **代码开发**: 学生将代码推送到 Git 仓库，触发 CI/CD 构建镜像。
-3.  **应用部署**: 在平台上一键部署应用到 Kubernetes 集群。
+3.  **应用部署**: 在平台上一键部署应用到 Kubernetes 集群，或由学生仓库自动触发部署。
 4.  **状态监控**: 实时查看应用运行状态和访问域名。
 
 ---
@@ -56,7 +56,29 @@ _注：Web 界面的批量导入功能正在开发中。_
 系统会自动在后台执行以下操作：
 1.  **创建 Namespace**: 确保对应的 `students-gd` 或 `students-cd` 命名空间存在。
 2.  **应用资源**: 创建 Kubernetes Deployment 和 Service。
-3.  **配置路由 (Ingress)**: 自动生成访问域名 (如 `s2025001.gd.hydrosim.cn`)。
+3.  **配置路由 (Ingress)**: 自动生成访问域名 (如 `stu-s2025001.gd.hydrosim.cn`)。
+
+### 学生仓库自动部署（推荐）
+当学生仓库完成镜像构建并推送到 Registry 后，可自动调用门户部署接口触发部署。
+
+**流程概览**
+1. 学生 push 代码 → CI 构建镜像并推送
+2. CI 调用门户部署接口
+3. 门户创建/更新 Deployment、Service、Ingress
+
+**接口示例**
+```bash
+curl -X POST "https://portal.example.com/api/v1/deploy/s2025001" \
+  -H "Content-Type: application/json" \
+  -H "X-Deploy-Token: <YOUR_TOKEN>" \
+  -d '{"image":"registry.example.com/gd/s2025001:abcd1234","project_type":"gd"}'
+```
+
+**Token 校验（防止误触发）**
+- 后端支持 `DEPLOY_TRIGGER_TOKEN` 环境变量。
+- 当该变量存在时，所有未登录的部署请求必须携带 `X-Deploy-Token`，否则会被拒绝。
+
+自动部署的完整示例流程请参考：`docs/technical_design/student_auto_deploy.md`
 
 ---
 

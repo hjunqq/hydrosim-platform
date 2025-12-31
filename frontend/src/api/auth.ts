@@ -13,6 +13,6 @@ export interface LoginResponse {
 
 export const authApi = {
   login(data: LoginParams) {
-    return request.post<LoginResponse>('/api/v1/auth/login', data)
+    return request.post<LoginResponse>('/api/v1/auth/login/', data)
   }
 }

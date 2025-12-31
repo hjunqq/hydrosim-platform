@@ -1,0 +1,33 @@
+name: Build & Auto Deploy
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    env:
+      REGISTRY: ${{ secrets.REGISTRY }}
+      STUDENT_CODE: ${{ secrets.STUDENT_CODE }}
+      PROJECT_TYPE: ${{ secrets.PROJECT_TYPE }}
+      IMAGE_NAME: ${{ secrets.REGISTRY }}/${{ secrets.PROJECT_TYPE }}/${{ secrets.STUDENT_CODE }}
+      IMAGE_TAG: ${{ github.sha }}
+      PORTAL_URL: ${{ secrets.PORTAL_URL }}
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Login to registry
+        run: echo "${{ secrets.REGISTRY_PASSWORD }}" | docker login "$REGISTRY" -u "${{ secrets.REGISTRY_USERNAME }}" --password-stdin
+
+      - name: Build & push
+        run: |
+          docker build -t "$IMAGE_NAME:$IMAGE_TAG" .
+          docker push "$IMAGE_NAME:$IMAGE_TAG"
+
+      - name: Trigger portal deploy
+        run: |
+          curl -X POST "$PORTAL_URL/api/v1/deploy/$STUDENT_CODE" \
+            -H "Content-Type: application/json" \
+            -H "X-Deploy-Token: ${{ secrets.DEPLOY_TRIGGER_TOKEN }}" \
+            -d "{\"image\":\"$IMAGE_NAME:$IMAGE_TAG\",\"project_type\":\"$PROJECT_TYPE\"}"

@@ -24,7 +24,7 @@ class TokenResponse(BaseModel):
     role: str
 
 
-@router.post("/login", response_model=TokenResponse)
+@router.post("/login/", response_model=TokenResponse)
 def login(payload: LoginRequest, db: Session = Depends(deps.get_db)):
     """教师或学生登录"""
     # 1. 尝试查询教师账号
@@ -49,6 +49,12 @@ def login(payload: LoginRequest, db: Session = Depends(deps.get_db)):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Account is disabled"
+        )
+
+    if not user.password_hash:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Account password not initialized"
         )
     
     # 验证密码

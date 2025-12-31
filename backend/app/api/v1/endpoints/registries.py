@@ -7,7 +7,7 @@ from app.services.registry_service import registry_service
 
 router = APIRouter()
 
-@router.post("/test", response_model=bool)
+@router.post("/test/", response_model=bool)
 async def test_registry_connection(
     payload: RegistryTestRequest,
     current_user = Depends(admin_deps.get_current_admin),
@@ -32,7 +32,7 @@ def create_registry(
 ):
     return registry_service.create(db, registry_in)
 
-@router.put("/{registry_id}", response_model=Registry)
+@router.put("/{registry_id}/", response_model=Registry)
 def update_registry(
     registry_id: int,
     registry_in: RegistryUpdate,
@@ -44,7 +44,7 @@ def update_registry(
         raise HTTPException(status_code=404, detail="Registry not found")
     return registry_service.update(db, registry, registry_in)
 
-@router.delete("/{registry_id}", response_model=Registry)
+@router.delete("/{registry_id}/", response_model=Registry)
 def delete_registry(
     registry_id: int,
     db: Session = Depends(deps.get_db),
@@ -55,7 +55,7 @@ def delete_registry(
         raise HTTPException(status_code=404, detail="Registry not found")
     return registry_service.remove(db, registry_id)
 
-@router.get("/{registry_id}/catalog", response_model=List[str])
+@router.get("/{registry_id}/catalog/", response_model=List[str])
 async def get_registry_catalog(
     registry_id: int,
     db: Session = Depends(deps.get_db),
@@ -67,7 +67,7 @@ async def get_registry_catalog(
         
     return await registry_service.get_catalog(registry.url, registry.username, registry.password)
 
-@router.get("/{registry_id}/tags", response_model=List[str])
+@router.get("/{registry_id}/tags/", response_model=List[str])
 async def get_registry_tags(
     registry_id: int,
     repository: str,
@@ -80,7 +80,7 @@ async def get_registry_tags(
         
     return await registry_service.get_tags(registry.url, repository, registry.username, registry.password)
 
-@router.delete("/{registry_id}/tags", response_model=bool)
+@router.delete("/{registry_id}/tags/", response_model=bool)
 async def delete_registry_tag(
     registry_id: int,
     repository: str,

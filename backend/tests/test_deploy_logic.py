@@ -17,12 +17,14 @@ class TestStudentProjectBuilder(unittest.TestCase):
         self.image = "registry.example.com/repo/img:tag"
         self.namespace = "students-gd"
         self.domain = "gd.hydrosim.cn"
+        self.host_prefix = "stu-"
         
         self.builder = StudentProjectBuilder(
             student_code=self.student_code,
             image=self.image,
             namespace=self.namespace,
-            domain_suffix=self.domain
+            domain_suffix=self.domain,
+            host_prefix=self.host_prefix
         )
 
     def test_deployment_generation(self):
@@ -53,7 +55,7 @@ class TestStudentProjectBuilder(unittest.TestCase):
 
     def test_ingress_generation(self):
         ing = self.builder.build_ingress()
-        expected_host = "s2025_001.gd.hydrosim.cn"
+        expected_host = "stu-s2025_001.gd.hydrosim.cn"
         self.assertEqual(ing.spec.rules[0].host, expected_host)
         self.assertEqual(ing.metadata.annotations["kubernetes.io/ingress.class"], "traefik")
 

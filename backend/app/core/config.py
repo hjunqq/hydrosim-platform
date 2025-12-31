@@ -52,6 +52,7 @@ class Settings(BaseSettings):
     # 其他
     ALLOW_DEMO_LOGIN: bool = True
     LOG_LEVEL: str = "INFO"
+    DEPLOY_TRIGGER_TOKEN: Optional[str] = None
     
     class Config:
         env_file = ".env"

@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 import { adminProjectsApi, AdminProject } from '../api/adminProjects';
 import { projectsApi } from '../api/projects';
 import { deploymentsApi } from '../api/deployments';
@@ -45,7 +46,7 @@ const ProjectStatusPage: React.FC = () => {
     const [displayStatus, setDisplayStatus] = useState<DisplayStatus>('NOT_DEPLOYED');
     const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
 
-    // Auto-refresh interval ref
+    const { user } = useAuth();
     const intervalRef = useRef<NodeJS.Timeout>();
 
     const mapStatus = (backendStatus?: string): DisplayStatus => {
@@ -62,7 +63,16 @@ const ProjectStatusPage: React.FC = () => {
         if (!id) return;
         try {
             if (!silent) setIsRefreshing(true);
-            const data = (id === 'me' ? await projectsApi.getMe() : await adminProjectsApi.get(Number(id))) as AdminProject;
+
+            let data: AdminProject;
+            if (id === 'me') {
+                data = await projectsApi.getMe() as any;
+            } else if (user?.role === 'student') {
+                data = await projectsApi.get(Number(id)) as any;
+            } else {
+                data = await adminProjectsApi.get(Number(id)) as AdminProject;
+            }
+
             setProject(data);
             setDisplayStatus(mapStatus(data.latest_deploy_status));
             setLastUpdated(new Date());

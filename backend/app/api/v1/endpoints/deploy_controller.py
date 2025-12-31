@@ -1,9 +1,20 @@
-from fastapi import APIRouter, HTTPException, BackgroundTasks, Body
+from datetime import datetime
+
+from fastapi import APIRouter, HTTPException, BackgroundTasks, Body, Depends, Header
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel
 from typing import Optional
 from kubernetes import client, config
 from kubernetes.client.rest import ApiException
 import logging
+from sqlalchemy.orm import Session
+
+from app import models
+from app.api import deps
+from app.core.config import settings
+from app.core.security import verify_token
+from app.models.deployment import DeploymentStatus
+from app.services.system_settings import get_or_create_settings, get_student_domain_parts
 
 # ================= Configuration =================
 # 配置日志
@@ -15,9 +26,6 @@ NAMESPACE_MAP = {
     "gd": "students-gd",
     "cd": "students-cd"
 }
-
-# 基础域名配置
-BASE_DOMAIN = "hydrosim.cn"
 
 # ================= K8s Client Init =================
 # 注意：在生产环境中，这段代码应放在 core/k8s_client.py 中，并作为依赖注入
@@ -68,10 +76,70 @@ class DeployResponse(BaseModel):
 
 # ================= Router =================
 router = APIRouter()
+auth_scheme = HTTPBearer(auto_error=False)
 
-@router.post("/{student_code}", response_model=DeployResponse, status_code=202)
-def trigger_deploy(student_code: str, req: DeployRequest):
-    print(f"DEBUG: Handler reached! code={student_code}, body={req}")
+
+def _get_role_value(user: object) -> str:
+    return getattr(getattr(user, "role", None), "value", getattr(user, "role", ""))
+
+
+def _assert_student_access(actor: object, student: models.Student) -> None:
+    role = _get_role_value(actor)
+    if role == "admin":
+        return
+    if role == "teacher":
+        if student.teacher_id and student.teacher_id != getattr(actor, "id", None):
+            raise HTTPException(status_code=403, detail="Not authorized for this student")
+        return
+    if role == "student":
+        if getattr(actor, "student_code", None) != student.student_code:
+            raise HTTPException(status_code=403, detail="Not authorized for this student")
+        return
+    raise HTTPException(status_code=403, detail="Insufficient permissions")
+
+
+def get_deploy_actor(
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(auth_scheme),
+    deploy_token: Optional[str] = Header(None, alias="X-Deploy-Token"),
+    db: Session = Depends(deps.get_db),
+):
+    if credentials:
+        payload = verify_token(credentials.credentials)
+        username = payload.get("sub")
+        if not username:
+            raise HTTPException(status_code=401, detail="Invalid authentication credentials")
+
+        user = (
+            db.query(models.Teacher)
+            .filter(models.Teacher.username == username)
+            .first()
+        )
+        if not user:
+            user = (
+                db.query(models.Student)
+                .filter(models.Student.student_code == username)
+                .first()
+            )
+        if not user:
+            raise HTTPException(status_code=401, detail="User not found")
+        if not user.is_active:
+            raise HTTPException(status_code=403, detail="Inactive user")
+        return user
+
+    if settings.DEPLOY_TRIGGER_TOKEN:
+        if deploy_token != settings.DEPLOY_TRIGGER_TOKEN:
+            raise HTTPException(status_code=403, detail="Invalid deploy trigger token")
+        return None
+
+    raise HTTPException(status_code=401, detail="Missing authentication credentials")
+
+@router.post("/{student_code}/", response_model=DeployResponse, status_code=202)
+def trigger_deploy(
+    student_code: str,
+    req: DeployRequest,
+    actor: Optional[object] = Depends(get_deploy_actor),
+    db: Session = Depends(deps.get_db),
+):
     """
     部署控制器核心接口：
     1. 根据 project_type 确定 namespace
@@ -86,8 +154,33 @@ def trigger_deploy(student_code: str, req: DeployRequest):
     
     namespace = NAMESPACE_MAP[req.project_type]
     deployment_name = f"student-{student_code}" # 资源命名规范
-    host = f"{student_code}.{req.project_type}.{BASE_DOMAIN}"
-    
+    student = (
+        db.query(models.Student)
+        .filter(models.Student.student_code == student_code)
+        .first()
+    )
+    if not student:
+        raise HTTPException(status_code=404, detail="Student not found")
+    if getattr(student.project_type, "value", student.project_type) != req.project_type:
+        raise HTTPException(status_code=400, detail="Project type mismatch")
+    if actor is not None:
+        _assert_student_access(actor, student)
+
+    settings = get_or_create_settings(db)
+    host_prefix, domain_suffix, full_domain = get_student_domain_parts(
+        settings, student_code, req.project_type
+    )
+    deployment_record = models.Deployment(
+        student_id=student.id,
+        image_tag=req.image,
+        status=DeploymentStatus.deploying,
+        message="Deployment requested",
+        last_deploy_time=datetime.utcnow(),
+    )
+    db.add(deployment_record)
+    db.commit()
+    db.refresh(deployment_record)
+
     logger.info(f"Starting deployment for {student_code} in {namespace}, image={req.image}")
 
     try:
@@ -134,7 +227,8 @@ def trigger_deploy(student_code: str, req: DeployRequest):
                 student_code=student_code,
                 image=req.image,
                 namespace=namespace,
-                domain_suffix=f"{req.project_type}.{BASE_DOMAIN}"
+                domain_suffix=domain_suffix,
+                host_prefix=host_prefix
             )
             
             # B1. Create Deployment
@@ -165,29 +259,47 @@ def trigger_deploy(student_code: str, req: DeployRequest):
 
             result_status = "created"
 
+        deployment_record.status = DeploymentStatus.running
+        deployment_record.message = f"Project {deployment_name} successfully {result_status}"
+        deployment_record.last_deploy_time = datetime.utcnow()
+
+        if student.domain != full_domain:
+            student.domain = full_domain
+
+        db.commit()
         return {
             "status": result_status,
             "message": f"Project {deployment_name} successfully {result_status}",
-            "url": f"http://{host}"
+            "url": f"http://{full_domain}"
         }
 
     except ApiException as e:
         logger.error(f"K8s API failed: {e}")
         logger.error(f"Exc Body: {e.body}")
         # 详细错误处理：权限、配额等
+        deployment_record.status = DeploymentStatus.failed
+        deployment_record.message = f"Kubernetes Operation Failed: {e.reason}"
+        deployment_record.last_deploy_time = datetime.utcnow()
+        db.commit()
         if e.status == 403:
              raise HTTPException(status_code=500, detail="Deployment Controller RBAC permission denied.")
         raise HTTPException(status_code=500, detail=f"Kubernetes Operation Failed: {e.reason}, Body: {e.body}")
     except Exception as e:
+        deployment_record.status = DeploymentStatus.failed
+        deployment_record.message = str(e)
+        deployment_record.last_deploy_time = datetime.utcnow()
+        db.commit()
         logger.exception("Unexpected error")
         raise HTTPException(status_code=500, detail=str(e))
 
 from app.services.deployment_monitor import get_deployment_status
 
-@router.delete("/{student_code}")
+@router.delete("/{student_code}/")
 def delete_deployment(
     student_code: str, 
     project_type: str,
+    actor: Optional[object] = Depends(get_deploy_actor),
+    db: Session = Depends(deps.get_db),
     # In a real app, inject user and check permissions here
     # current_user: models.Teacher = Depends(get_current_user)
 ):
@@ -196,6 +308,21 @@ def delete_deployment(
     """
     if project_type not in NAMESPACE_MAP:
         raise HTTPException(status_code=400, detail="Invalid project_type")
+
+    if actor is None:
+        raise HTTPException(status_code=403, detail="Deploy token cannot delete resources")
+    role = _get_role_value(actor)
+    if role not in ["admin", "teacher"]:
+        raise HTTPException(status_code=403, detail="Not authorized to delete deployments")
+
+    student = (
+        db.query(models.Student)
+        .filter(models.Student.student_code == student_code)
+        .first()
+    )
+    if not student:
+        raise HTTPException(status_code=404, detail="Student not found")
+    _assert_student_access(actor, student)
         
     namespace = NAMESPACE_MAP[project_type]
     deployment_name = f"student-{student_code}"
@@ -235,22 +362,55 @@ def delete_deployment(
     }
 
 @router.get("/{student_code}")
-def query_deploy_status(student_code: str, project_type: str):
+def query_deploy_status(
+    student_code: str,
+    project_type: str,
+    actor: Optional[object] = Depends(get_deploy_actor),
+    db: Session = Depends(deps.get_db),
+):
     """
     Get realtime deployment status.
     Requires project_type query param (gd/cd) to locate the namespace.
     """
+    if actor is not None:
+        student = (
+            db.query(models.Student)
+            .filter(models.Student.student_code == student_code)
+            .first()
+        )
+        if not student:
+            raise HTTPException(status_code=404, detail="Student not found")
+        _assert_student_access(actor, student)
+
     result = get_deployment_status(student_code, project_type)
     if result["status"] == "error" and result.get("detail") == "Invalid project_type":
          raise HTTPException(status_code=400, detail="Invalid project_type")
     return result
 
 @router.get("/resources/list")
-def list_cluster_resources():
+def list_cluster_resources(
+    actor: Optional[object] = Depends(get_deploy_actor),
+    db: Session = Depends(deps.get_db),
+):
     """
     List all student deployments explicitly found in K8s clusters.
     Scans 'students-gd' and 'students-cd' namespaces.
     """
+    if actor is None:
+        raise HTTPException(status_code=403, detail="Deploy token cannot access cluster resources")
+    role = _get_role_value(actor)
+    if role not in ["admin", "teacher"]:
+        raise HTTPException(status_code=403, detail="Not authorized to view cluster resources")
+
+    allowed_codes = None
+    if role == "teacher":
+        rows = (
+            db.query(models.Student.student_code)
+            .filter(models.Student.teacher_id == actor.id)
+            .all()
+        )
+        allowed_codes = {row[0] for row in rows}
+
     results = []
     
     for ns_type, ns_name in NAMESPACE_MAP.items():
@@ -270,6 +430,9 @@ def list_cluster_resources():
                 if d.spec.template.spec.containers:
                     image = d.spec.template.spec.containers[0].image
                 
+                if allowed_codes is not None and code not in allowed_codes:
+                    continue
+
                 results.append({
                     "student_code": code,
                     "project_type": ns_type,

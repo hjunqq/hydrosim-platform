@@ -14,12 +14,92 @@
 - 平台通过 Gitea API，不直接读写 Gitea 数据库
 - 学生项目数据与平台分离，平台仅存元数据（teachers/students/deployments）
 
+Step 0: 推送代码到 Gitea（如已托管可跳过）
+1) 在 Gitea 上创建一个新仓库（例如 `hydrosim-platform`）。
+2) 本地添加远程地址并推送：
+```
+git remote add origin http://<gitea-host>/<owner>/hydrosim-platform.git
+git add -A
+git commit -m "init portal"
+git push -u origin main
+```
+
+Step 0.1: 配置 Gitea Actions 自动部署（推荐）
+目标：代码 push 后自动构建镜像，并直接部署到 k3s。
+
+**准备 CI 专用 kubeconfig（一次性）**
+```bash
+# 创建 CI ServiceAccount
+kubectl -n hydrosim create serviceaccount ci-deployer
+kubectl -n hydrosim create rolebinding ci-deployer-edit --clusterrole=edit  --serviceaccount=hydrosim:ci-deployer
+
+# 获取集群地址与 CA
+SERVER=$(kubectl config view --raw -o jsonpath='{.clusters[0].cluster.server}')
+CA_DATA=$(kubectl config view --raw -o jsonpath='{.clusters[0].cluster.certificate-authority-data}')
+
+# 生成 token (K8s 1.24+)
+TOKEN=$(kubectl -n hydrosim create token ci-deployer)
+
+# 生成 kubeconfig
+cat > /tmp/ci-kubeconfig <<EOF
+apiVersion: v1
+kind: Config
+clusters:
+- cluster:
+    certificate-authority-data: ${CA_DATA}
+    server: ${SERVER}
+  name: k3s
+users:
+- name: ci-deployer
+  user:
+    token: ${TOKEN}
+contexts:
+- context:
+    cluster: k3s
+    user: ci-deployer
+    namespace: hydrosim
+  name: ci-deployer@k3s
+current-context: ci-deployer@k3s
+EOF
+
+# 注意：k3s 默认 server 可能是 https://127.0.0.1:6443
+# CI 机器无法访问时，请替换为集群可达地址，或在工作流里设置 KUBE_SERVER
+
+# 转成 base64 (用于 Gitea Secret)
+base64 -w0 /tmp/ci-kubeconfig
+```
+
+Windows PowerShell（已生成 kubeconfig 文件时）：
+```powershell
+[Convert]::ToBase64String([IO.File]::ReadAllBytes("ci-kubeconfig"))
+```
+
+**在 Gitea 仓库配置 Secrets**
+- `REGISTRY`, `REGISTRY_USERNAME`, `REGISTRY_PASSWORD`
+- `KUBECONFIG_DATA`（上一步 base64 输出）
+- `KUBE_SERVER`（可选，覆盖 kubeconfig 里的 server）
+- `KUBE_INSECURE`（可选，设为 `true` 可跳过 k3s 自签证书校验）
+- `DATABASE_URL`, `JWT_SECRET_KEY`
+- `GITEA_URL`, `GITEA_TOKEN`（如无需可留空）
+- `GITEA_USERNAME`（可选，手动 checkout 需要时使用）
+- `GITEA_REPOSITORY`（可选，格式：`owner/repo`）
+- `GITEA_CA_CERT`（可选，自签证书 PEM）
+- `GIT_SSL_NO_VERIFY`（可选，设为 `true` 可临时跳过 Git SSL 校验）
+- `MINIO_ENDPOINT`, `MINIO_BUCKET`, `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY`（如无需可留空）
+- `DEPLOY_TRIGGER_TOKEN`（用于学生仓库自动部署）
+- `RUN_DB_MIGRATION`（可选，设为 `true`）
+- `APPLY_POSTGRES`（可选，设为 `false` 可跳过内置 Postgres 部署）
+
+**启用工作流**
+已内置工作流：`.gitea/workflows/portal-deploy.yaml`  
+触发条件：`main` 分支 push 或手动触发。
+
 Step 1: 创建命名空间与 RBAC
 ```
 kubectl apply -f deploy/base/
 ```
 
-Step 2: 部署平台专用 Postgres
+Step 2: 部署平台专用 Postgres（可选）
 如果你已自建 Postgres，可跳过此步并在 Step 3 中填你的连接信息。
 ```
 kubectl apply -f deploy/infra/postgres.yaml
@@ -32,6 +112,7 @@ Step 3: 配置后端连接信息
   - `JWT_SECRET_KEY` 自己设
   - `MINIO_ACCESS_KEY` / `MINIO_SECRET_KEY` 使用你的 MinIO 凭据
   - `GITEA_TOKEN` 使用你的 Gitea token
+  - `DEPLOY_TRIGGER_TOKEN` 用于学生仓库自动部署的回调校验
 - `deploy/backend/configmap.yaml`
   - `GITEA_URL` 指向你的 Gitea 地址
   - `MINIO_ENDPOINT` 指向你的 MinIO 地址
@@ -78,6 +159,7 @@ Step 8: 初始化数据库与创建默认教师
 kubectl -n hydrosim exec deploy/portal-backend -- alembic upgrade head
 kubectl -n hydrosim exec deploy/portal-backend -- python seed_teacher.py
 # 默认账号：teacher / teacher123
+# 管理员账号：admin / admin123
 ```
 
 Step 9: 验证平台
@@ -85,6 +167,12 @@ Step 9: 验证平台
 kubectl -n hydrosim get pods
 curl -I https://portal.hydrosim.cn/api/v1/health
 ```
+
+Step 9.1: 系统设置推荐值（首次部署后）
+进入“系统设置”并确认学生域名配置：
+- 学生域名前缀：`stu-`
+- 学生域名后缀：`hydrosim.cn`
+最终域名格式示例：`stu-s2025001.gd.hydrosim.cn`
 
 Step 10: 学生项目部署流程（平台内）
 1) 登录 `https://portal.hydrosim.cn`
@@ -115,6 +203,9 @@ kubectl -n students-gd scale deployment student-s2025_001 --replicas=0
 ```
 
 重新部署（更新镜像）：再次调用 `/api/v1/deploy/{student_code}`。
+
+Step 13: 学生仓库自动部署（推荐）
+参考：`docs/technical_design/student_auto_deploy.md`
 
 删除学生项目资源：
 ```

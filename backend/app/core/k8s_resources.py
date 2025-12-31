@@ -12,12 +12,14 @@ class StudentProjectBuilder:
         student_code: str, 
         image: str, 
         namespace: str, 
-        domain_suffix: str
+        domain_suffix: str,
+        host_prefix: str = ""
     ):
         self.student_code = student_code
         self.image = image
         self.namespace = namespace
         self.domain_suffix = domain_suffix.lstrip(".") # 确保无前导点
+        self.host_prefix = host_prefix or ""
         
         # 统一命名规范：student-{code}
         self.app_name = f"student-{student_code}"
@@ -139,7 +141,7 @@ class StudentProjectBuilder:
         生成 V1Ingress 对象
         Host: {student_code}.{domain_suffix}
         """
-        host = f"{self.student_code}.{self.domain_suffix}"
+        host = f"{self.host_prefix}{self.student_code}.{self.domain_suffix}"
         
         # 路径规则
         path = client.V1HTTPIngressPath(
@@ -177,12 +179,13 @@ def generate_resources(
     student_code: str, 
     image: str, 
     namespace: str,
-    domain_suffix: str
+    domain_suffix: str,
+    host_prefix: str = ""
 ) -> Dict[str, object]:
     """
     Helper function to get all resources at once
     """
-    builder = StudentProjectBuilder(student_code, image, namespace, domain_suffix)
+    builder = StudentProjectBuilder(student_code, image, namespace, domain_suffix, host_prefix=host_prefix)
     return {
         "deployment": builder.build_deployment(),
         "service": builder.build_service(),

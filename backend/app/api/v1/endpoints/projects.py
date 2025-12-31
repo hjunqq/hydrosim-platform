@@ -2,11 +2,6 @@
 Project management endpoints
 """
 from typing import List, Optional
-from fastapi import APIRouter
-
-router = APIRouter()
-
-
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
@@ -15,6 +10,7 @@ from app import models, schemas
 from app.api import deps
 from app.api.auth_deps import get_current_user
 from app.schemas.project import ProjectOut
+from app.services.system_settings import get_or_create_settings, get_student_domain_parts
 
 router = APIRouter()
 
@@ -42,6 +38,7 @@ def list_projects(
         query = query.filter(models.Student.student_code == student_id)
         
     students = query.all()
+    settings = get_or_create_settings(db)
     results = []
     
     for s in students:
@@ -53,13 +50,17 @@ def list_projects(
             .first()
         )
         
+        domain = s.domain
+        if not domain:
+            _, _, domain = get_student_domain_parts(settings, s.student_code, s.project_type)
+
         project_data = ProjectOut(
             id=s.id,
             student_code=s.student_code,
             name=s.name,
             project_type=s.project_type,
             git_repo_url=s.git_repo_url,
-            domain=s.domain,
+            domain=domain,
             created_at=s.created_at,
             latest_deploy_status=latest_deploy.status if latest_deploy else None,
             latest_deploy_time=latest_deploy.created_at if latest_deploy else None,
@@ -69,7 +70,7 @@ def list_projects(
         
     return results
 
-@router.get("/me", response_model=ProjectOut)
+@router.get("/me/", response_model=ProjectOut)
 def get_my_project(
     db: Session = Depends(deps.get_db),
     current_user = Depends(get_current_user)
@@ -90,13 +91,18 @@ def get_my_project(
         .first()
     )
     
+    settings = get_or_create_settings(db)
+    domain = student.domain
+    if not domain:
+        _, _, domain = get_student_domain_parts(settings, student.student_code, student.project_type)
+
     return ProjectOut(
         id=student.id,
         student_code=student.student_code,
         name=student.name,
         project_type=student.project_type,
         git_repo_url=student.git_repo_url,
-        domain=student.domain,
+        domain=domain,
         created_at=student.created_at,
         latest_deploy_status=latest_deploy.status if latest_deploy else None,
         latest_deploy_time=latest_deploy.created_at if latest_deploy else None,
@@ -104,8 +110,48 @@ def get_my_project(
     )
 
 
-@router.get("/{project_id}")
-def get_project(project_id: str):
+@router.get("/{student_id}/", response_model=ProjectOut)
+def get_project(
+    student_id: int,
+    db: Session = Depends(deps.get_db),
+    current_user = Depends(get_current_user)
+):
     """获取项目详情"""
-    # TODO: 实现项目详情查询
-    return {"message": f"Get project {project_id} - to be implemented"}
+    # Permission check
+    if getattr(current_user, 'role', '') == 'student' and current_user.id != student_id:
+         raise HTTPException(status_code=403, detail="You can only view your own project")
+    
+    # If teacher, check if student belongs to teacher
+    if getattr(current_user, 'role', '') == 'teacher':
+        s = db.query(models.Student).filter(models.Student.id == student_id, models.Student.teacher_id == current_user.id).first()
+    else:
+        s = db.query(models.Student).filter(models.Student.id == student_id).first()
+        
+    if not s:
+        raise HTTPException(status_code=404, detail="Project not found")
+        
+    # Get latest deployment
+    latest_deploy = (
+        db.query(models.Deployment)
+        .filter(models.Deployment.student_id == s.id)
+        .order_by(desc(models.Deployment.created_at))
+        .first()
+    )
+    
+    settings = get_or_create_settings(db)
+    domain = s.domain
+    if not domain:
+        _, _, domain = get_student_domain_parts(settings, s.student_code, s.project_type)
+
+    return ProjectOut(
+        id=s.id,
+        student_code=s.student_code,
+        name=s.name,
+        project_type=s.project_type,
+        git_repo_url=s.git_repo_url,
+        domain=domain,
+        created_at=s.created_at,
+        latest_deploy_status=latest_deploy.status if latest_deploy else None,
+        latest_deploy_time=latest_deploy.created_at if latest_deploy else None,
+        latest_deploy_message=latest_deploy.message if latest_deploy else None
+    )

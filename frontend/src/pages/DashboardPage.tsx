@@ -19,8 +19,8 @@ const DashboardPage = () => {
 
         // Calculate Stats
         const total = data.length
-        const running = data.filter((s) => s.domain).length
-        const failed = 0 // Mock
+        const running = data.filter((s) => s.latest_deploy_status === 'running' || s.latest_deploy_status === 'success').length
+        const failed = data.filter((s) => s.latest_deploy_status === 'failed' || s.latest_deploy_status === 'error').length
         const pending = total - running - failed
 
         setStats({ total, running, failed, pending })
@@ -44,12 +44,16 @@ const DashboardPage = () => {
   }, [])
 
   const getStatusClass = (student: Student) => {
-    if (student.domain) return 'st-success'
-    return 'st-waiting'
+    if (student.latest_deploy_status === 'running' || student.latest_deploy_status === 'success') return 'st-success'
+    if (student.latest_deploy_status === 'failed' || student.latest_deploy_status === 'error') return 'st-danger'
+    if (student.latest_deploy_status === 'deploying' || student.latest_deploy_status === 'pending') return 'st-waiting'
+    return 'st-default'
   }
 
   const getStatusText = (student: Student) => {
-    if (student.domain) return '运行中'
+    if (student.latest_deploy_status === 'running' || student.latest_deploy_status === 'success') return '运行中'
+    if (student.latest_deploy_status === 'deploying' || student.latest_deploy_status === 'pending') return '部署中'
+    if (student.latest_deploy_status === 'failed' || student.latest_deploy_status === 'error') return '异常'
     return '待部署'
   }
 

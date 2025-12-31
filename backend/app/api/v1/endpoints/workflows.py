@@ -51,7 +51,7 @@ def list_workflows(
     runs = gitea_service.get_workflow_runs(owner, repo_name)
     return runs
 
-@router.get("/{run_id}")
+@router.get("/{run_id}/")
 def get_workflow_run(
     run_id: str,
     # TODO: Add logic to find owner/repo context if needed, or pass student_id query param

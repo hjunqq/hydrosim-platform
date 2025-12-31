@@ -7,14 +7,14 @@ from app import models
 
 router = APIRouter()
 
-@router.get("/me", response_model=User)
+@router.get("/me/", response_model=User)
 def get_my_profile(
     current_user: models.Teacher = Depends(auth_deps.get_current_user)
 ):
     """获取当前登录用户信息"""
     return current_user
 
-@router.put("/me", response_model=User)
+@router.put("/me/", response_model=User)
 def update_my_profile(
     user_in: UserUpdate,
     db: Session = Depends(deps.get_db),
@@ -30,7 +30,7 @@ def update_my_profile(
     db.refresh(current_user)
     return current_user
 
-@router.put("/me/password", response_model=bool)
+@router.put("/me/password/", response_model=bool)
 def change_my_password(
     password_in: UserUpdatePassword,
     db: Session = Depends(deps.get_db),

@@ -9,10 +9,11 @@ from app.models.student import Student
 from app.models.deployment import Deployment
 from app.schemas.project import ProjectOut
 from app.schemas.student import Student as StudentSchema
+from app.services.system_settings import get_or_create_settings, get_student_domain_parts
 
 router = APIRouter()
 
-@router.get("/projects", response_model=List[ProjectOut])
+@router.get("/projects/", response_model=List[ProjectOut])
 def list_projects(
     db: Session = Depends(deps.get_db),
     current_user: Teacher = Depends(get_current_user),
@@ -36,6 +37,7 @@ def list_projects(
         query = query.filter(Student.name.ilike(f"%{search}%") | Student.student_code.ilike(f"%{search}%"))
 
     students = query.offset(skip).limit(limit).all()
+    settings = get_or_create_settings(db)
     results = []
     
     
@@ -118,13 +120,17 @@ def list_projects(
              # Let's say if DB has a record, we use its time, but status is based on K8s.
              pass
         
+        domain = s.domain
+        if not domain:
+            _, _, domain = get_student_domain_parts(settings, s.student_code, s.project_type)
+
         project_data = ProjectOut(
             id=s.id,
             student_code=s.student_code,
             name=s.name,
             project_type=s.project_type,
             git_repo_url=s.git_repo_url,
-            domain=s.domain,
+            domain=domain,
             created_at=s.created_at,
             latest_deploy_status=status,
             latest_deploy_time=latest_deploy.created_at if latest_deploy else None,
@@ -143,7 +149,7 @@ def list_projects(
         
     return results
 
-@router.get("/projects/{project_id}", response_model=ProjectOut)
+@router.get("/projects/{project_id}/", response_model=ProjectOut)
 def get_project(
     project_id: int,
     db: Session = Depends(deps.get_db),
@@ -235,13 +241,18 @@ def get_project(
     elif latest_deploy:
         pass # Use defaults
         
+    settings = get_or_create_settings(db)
+    domain = student.domain
+    if not domain:
+        _, _, domain = get_student_domain_parts(settings, student.student_code, student.project_type)
+
     project_data = ProjectOut(
         id=student.id,
         student_code=student.student_code,
         name=student.name,
         project_type=student.project_type,
         git_repo_url=student.git_repo_url,
-        domain=student.domain,
+        domain=domain,
         created_at=student.created_at,
         latest_deploy_status=status,
         latest_deploy_time=latest_deploy.created_at if latest_deploy else None,
@@ -265,7 +276,7 @@ class ProjectUpdate(BaseModel):
     expected_image_name: Optional[str] = None
     description: Optional[str] = None
 
-@router.put("/projects/{project_id}", response_model=StudentSchema)
+@router.put("/projects/{project_id}/", response_model=StudentSchema)
 def update_project(
     project_id: int,
     project_in: ProjectUpdate,

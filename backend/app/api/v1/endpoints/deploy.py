@@ -35,7 +35,7 @@ def trigger_deploy(
     if "image_tag" in payload:
          # Adapter logic
          req = NewDeployRequest(image=payload["image_tag"], project_type=student.project_type)
-         return new_trigger_deploy(student.student_code, req)
+         return new_trigger_deploy(student.student_code, req, current_user, db)
          
     raise HTTPException(
         status_code=400, 

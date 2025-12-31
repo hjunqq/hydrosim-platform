@@ -101,19 +101,36 @@ const StudentsPage = () => {
     }
 
     // --- Helpers ---
-    const getStatus = (student: Student): 'running' | 'pending' | 'failed' => {
-        if (student.domain) return 'running'
-        return 'pending'
+    const getStatus = (student: Student): 'running' | 'pending' | 'failed' | 'deploying' => {
+        switch (student.latest_deploy_status) {
+            case 'running':
+            case 'success':
+                return 'running'
+            case 'deploying':
+            case 'pending':
+                return 'deploying'
+            case 'failed':
+            case 'error':
+                return 'failed'
+            default:
+                return 'pending'
+        }
     }
 
     const getStatusText = (student: Student) => {
-        if (student.domain) return '运行中'
+        const status = getStatus(student)
+        if (status === 'running') return '运行中'
+        if (status === 'deploying') return '部署中'
+        if (status === 'failed') return '异常'
         return '待部署'
     }
 
     const getStatusClass = (student: Student) => {
-        if (student.domain) return 'st-success'
-        return 'st-waiting'
+        const status = getStatus(student)
+        if (status === 'running') return 'st-success'
+        if (status === 'failed') return 'st-danger'
+        if (status === 'deploying') return 'st-waiting'
+        return 'st-default'
     }
 
     // Filter Logic
@@ -193,7 +210,9 @@ const StudentsPage = () => {
                             alignment="center"
                             cellRender={(data) => {
                                 const domain = data.data.domain;
-                                if (!domain) return <span style={{ color: '#ccc' }}>-</span>;
+                                const status = data.data.latest_deploy_status;
+                                const isRunning = status === 'running' || status === 'success';
+                                if (!domain || !isRunning) return <span style={{ color: '#ccc' }}>-</span>;
                                 const url = domain.startsWith('http') ? domain : `http://${domain}`;
                                 return (
                                     <a href={url} target="_blank" rel="noopener noreferrer" title="访问部署门户">

@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, ReactNode } from 'react
 import { authApi, LoginParams, LoginResponse } from '../api/auth'
 
 interface User {
+    id?: number
     username: string
     role?: string
 }
@@ -43,8 +44,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         try {
             // request.ts returns the response.data object directly
             const res = await authApi.login(params) as unknown as LoginResponse & { role: string }
-            const { access_token, username, role } = res
-            const userObj = { username, role }
+            const { access_token, username, role, user_id } = res as any
+            const userObj = { id: user_id, username, role }
 
             setToken(access_token)
             setUser(userObj)

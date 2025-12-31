@@ -6,7 +6,7 @@ import { Popup } from 'devextreme-react/popup'
 import notify from 'devextreme/ui/notify'
 
 import { studentsApi, Student } from '../api/students'
-import { deploymentsApi, DeployRequest, DeploymentStatus } from '../api/deployments'
+import { deploymentsApi, DeployRequest, DeploymentStatus, DeploymentRecord } from '../api/deployments'
 import DeploymentStatusModal from '../components/DeploymentStatusModal'
 
 const StudentDetailPage = () => {
@@ -14,7 +14,7 @@ const StudentDetailPage = () => {
     const navigate = useNavigate()
     const [student, setStudent] = useState<Student | null>(null)
     const [loading, setLoading] = useState(true)
-    const [deployHistory, setDeployHistory] = useState<any[]>([])
+    const [deployHistory, setDeployHistory] = useState<DeploymentRecord[]>([])
 
     // Polling State
     const [deployStatus, setDeployStatus] = useState<DeploymentStatus | null>(null)
@@ -39,11 +39,7 @@ const StudentDetailPage = () => {
 
             // Start polling
             startPolling(data.student_code, data.project_type)
-
-            // Mock History Data (Backend doesn't provide history yet)
-            setDeployHistory([
-                { id: 101, status: 'success', image_tag: 'nginx:alpine', created_at: '2024-12-24 10:30:45', duration: '45s', user: '李老师' },
-            ])
+            await loadDeployHistory(data.id)
         } catch (err) {
             notify('加载学生详情失败', 'error', 3000)
             navigate('/students')
@@ -58,6 +54,15 @@ const StudentDetailPage = () => {
             setDeployStatus(status)
         } catch (err) {
             console.error("Failed to fetch status", err)
+        }
+    }
+
+    const loadDeployHistory = async (studentId: number) => {
+        try {
+            const history = await deploymentsApi.list({ student_id: studentId, limit: 20 })
+            setDeployHistory(history)
+        } catch (err) {
+            console.error('Failed to load deploy history', err)
         }
     }
 
@@ -84,16 +89,7 @@ const StudentDetailPage = () => {
             setIsDeployStatusVisible(true)
 
             notify('部署任务已提交', 'success', 2000)
-
-            // Add to mock history (Optimistic update)
-            setDeployHistory(prev => [{
-                id: Date.now(),
-                status: 'processing',
-                image_tag: deployForm.image,
-                created_at: new Date().toLocaleString('zh-CN'),
-                duration: '-',
-                user: 'User'
-            }, ...prev])
+            await loadDeployHistory(student.id)
 
         } catch (err: any) {
             notify(err.response?.data?.detail || '部署失败', 'error', 3000)
@@ -116,6 +112,23 @@ const StudentDetailPage = () => {
     const isRunning = deployStatus?.status === 'running'
     const isDeploying = deployStatus?.status === 'deploying'
     const isError = deployStatus?.status === 'error'
+    const latestImage = deployHistory[0]?.image_tag
+
+    const getRecordStatus = (status?: string) => {
+        switch (status) {
+            case 'running':
+            case 'success':
+                return { label: '成功', bg: 'var(--success-1)', color: 'var(--success-6)' }
+            case 'deploying':
+            case 'pending':
+                return { label: '部署中', bg: 'var(--primary-1)', color: 'var(--primary-6)' }
+            case 'failed':
+            case 'error':
+                return { label: '失败', bg: 'var(--danger-1)', color: 'var(--danger-6)' }
+            default:
+                return { label: '未知', bg: 'var(--fill-2)', color: 'var(--text-3)' }
+        }
+    }
 
     return (
         <>
@@ -152,7 +165,7 @@ const StudentDetailPage = () => {
                         <button className="btn btn-default" onClick={() => notify('编辑功能开发中', 'info', 2000)}>编辑配置</button>
                         <button className="btn btn-primary" onClick={() => setIsDeployPopupVisible(true)}>部署新版本</button>
                         {isRunning && student.domain && (
-                            <button className="btn btn-default" onClick={() => window.open(`http://${student.student_code}.${student.project_type}.hydrosim.cn`, '_blank')}>访问网站</button>
+                            <button className="btn btn-default" onClick={() => window.open(`http://${student.domain}`, '_blank')}>访问网站</button>
                         )}
                     </div>
                 </div>
@@ -193,7 +206,7 @@ const StudentDetailPage = () => {
                             <div>
                                 <div style={{ fontSize: 13, color: 'var(--text-3)', marginBottom: 4 }}>目标域名</div>
                                 <div style={{ fontSize: 14, color: 'var(--text-1)', fontWeight: 500 }}>
-                                    {`http://${student.student_code}.${student.project_type}.hydrosim.cn`}
+                                    {student.domain ? `http://${student.domain}` : '-'}
                                 </div>
                             </div>
                             <div>
@@ -202,7 +215,7 @@ const StudentDetailPage = () => {
                                     fontSize: 14, fontWeight: 500, fontFamily: 'monospace',
                                     background: 'var(--fill-2)', padding: '2px 6px', borderRadius: 2, display: 'inline-block'
                                 }}>
-                                    {deployForm.image}
+                                    {latestImage || '-'}
                                 </div>
                             </div>
                             <div>
@@ -261,26 +274,30 @@ const StudentDetailPage = () => {
                             </tr>
                         </thead>
                         <tbody>
-                            {deployHistory.map((record) => (
-                                <tr key={record.id}>
-                                    <td>{record.created_at}</td>
-                                    <td style={{ fontFamily: 'monospace' }}>{record.image_tag}</td>
-                                    <td>{record.duration}</td>
-                                    <td>{record.user}</td>
-                                    <td>
-                                        <span style={{
-                                            padding: '2px 8px', borderRadius: 2, fontSize: 12, fontWeight: 500,
-                                            background: record.status === 'success' ? 'var(--success-1)' : (record.status === 'failed' ? 'var(--danger-1)' : 'var(--primary-1)'),
-                                            color: record.status === 'success' ? 'var(--success-6)' : (record.status === 'failed' ? 'var(--danger-6)' : 'var(--primary-6)')
-                                        }}>
-                                            {record.status === 'success' ? '成功' : (record.status === 'failed' ? '失败' : '部署中')}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <a className="link-text" onClick={() => notify('日志查看功能开发中', 'info', 2000)}>查看日志</a>
-                                    </td>
-                                </tr>
-                            ))}
+                            {deployHistory.map((record) => {
+                                const status = getRecordStatus(record.status)
+                                const deployTime = record.last_deploy_time || record.created_at
+                                return (
+                                    <tr key={record.id}>
+                                        <td>{deployTime ? new Date(deployTime).toLocaleString('zh-CN') : '-'}</td>
+                                        <td style={{ fontFamily: 'monospace' }}>{record.image_tag}</td>
+                                        <td>-</td>
+                                        <td>-</td>
+                                        <td>
+                                            <span style={{
+                                                padding: '2px 8px', borderRadius: 2, fontSize: 12, fontWeight: 500,
+                                                background: status.bg,
+                                                color: status.color
+                                            }}>
+                                                {status.label}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <a className="link-text" onClick={() => notify(record.message || '暂无日志信息', 'info', 2000)}>查看日志</a>
+                                        </td>
+                                    </tr>
+                                )
+                            })}
                         </tbody>
                     </table>
                 </div>
@@ -318,7 +335,7 @@ const StudentDetailPage = () => {
                 visible={isDeployStatusVisible}
                 onClose={() => setIsDeployStatusVisible(false)}
                 studentName={student?.name}
-                domain={`${student?.student_code}.${student?.project_type}.hydrosim.cn`}
+                domain={student?.domain}
             />
         </>
     )

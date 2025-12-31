@@ -19,12 +19,12 @@ export interface ProfileUpdateParams {
 }
 
 export interface PasswordUpdateParams {
-    current_password: str;
-    new_password: str;
+    current_password: string;
+    new_password: string;
 }
 
 export const profileApi = {
-    getMe: () => request.get<UserProfile>('/api/v1/profile/me'),
-    updateMe: (data: ProfileUpdateParams) => request.put<UserProfile>('/api/v1/profile/me', data),
-    updatePassword: (data: PasswordUpdateParams) => request.put<boolean>('/api/v1/profile/me/password', data)
+    getMe: () => request.get<UserProfile>('/api/v1/profile/me/'),
+    updateMe: (data: ProfileUpdateParams) => request.put<UserProfile>('/api/v1/profile/me/', data),
+    updatePassword: (data: PasswordUpdateParams) => request.put<boolean>('/api/v1/profile/me/password/', data)
 };
