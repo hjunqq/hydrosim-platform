@@ -3,6 +3,8 @@ from kubernetes.client.rest import ApiException
 import logging
 from typing import Dict, Optional
 
+from app.core.naming import student_resource_name
+
 logger = logging.getLogger("deployment-monitor")
 
 # 复用之前的配置，建议集中管理
@@ -54,7 +56,7 @@ def get_deployment_status(student_code: str, project_type: str) -> Dict[str, str
     if project_type == 'platform':
         deployment_name = "hydrosim-portal"
     else:
-        deployment_name = f"student-{student_code}"
+        deployment_name = student_resource_name(student_code)
     
     try:
         # 2. 获取 Deployment 状态
@@ -172,11 +174,14 @@ def get_all_deployment_statuses(student_namespaces: list = None) -> Dict[str, Di
             
             pods = core_v1.list_namespaced_pod(namespace=ns)
             for pod in pods.items:
-                app_label = pod.metadata.labels.get("app") # e.g. student-u2023001
-                if not app_label or not app_label.startswith("student-"):
+                app_label = pod.metadata.labels.get("app")  # e.g. student-u2023001
+                student_label = pod.metadata.labels.get("student")
+                if student_label:
+                    student_code = student_label
+                elif app_label and app_label.startswith("student-"):
+                    student_code = app_label.replace("student-", "")
+                else:
                     continue
-                
-                student_code = app_label.replace("student-", "")
                 
                 # Determine status logic (simplified version of single-fetch)
                 status = "unknown"

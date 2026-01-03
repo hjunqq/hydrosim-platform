@@ -3,6 +3,7 @@ import request from './request'
 export interface DeployRequest {
     image: string
     project_type: 'gd' | 'cd'
+    build_id?: number
 }
 
 export interface DeployResponse {

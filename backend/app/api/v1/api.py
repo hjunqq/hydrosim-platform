@@ -5,7 +5,8 @@ from fastapi import APIRouter
 
 from app.api.v1.endpoints import (
     auth, projects, students, deployments, workflows, deploy_controller,
-    admin_projects, registries, monitoring, admin_settings, profile
+    admin_projects, registries, monitoring, admin_settings, profile,
+    webhooks, builds, build_configs
 )
 
 
@@ -24,3 +25,8 @@ api_router.include_router(admin_projects.router, prefix="/admin", tags=["Admin P
 api_router.include_router(registries.router, prefix="/admin/registries", tags=["Admin Registries"])
 api_router.include_router(monitoring.router, prefix="/admin/monitoring", tags=["Admin Monitoring"])
 api_router.include_router(admin_settings.router, prefix="/admin", tags=["Admin Settings"])
+
+# Build Orchestration
+api_router.include_router(webhooks.router, prefix="/webhooks", tags=["Webhooks"])
+api_router.include_router(builds.router, prefix="/builds", tags=["Builds"])
+api_router.include_router(build_configs.router, prefix="/build-configs", tags=["Build Configs"])

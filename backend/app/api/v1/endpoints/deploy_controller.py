@@ -1,6 +1,4 @@
-from datetime import datetime
-
-from fastapi import APIRouter, HTTPException, BackgroundTasks, Body, Depends, Header
+from fastapi import APIRouter, HTTPException, Depends, Header
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel
 from typing import Optional
@@ -12,9 +10,9 @@ from sqlalchemy.orm import Session
 from app import models
 from app.api import deps
 from app.core.config import settings
+from app.core.naming import student_resource_name
 from app.core.security import verify_token
-from app.models.deployment import DeploymentStatus
-from app.services.system_settings import get_or_create_settings, get_student_domain_parts
+from app.services.deploy_service import deploy_student_resources, NAMESPACE_MAP
 
 # ================= Configuration =================
 # 配置日志
@@ -22,11 +20,6 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("deploy-controller")
 
 # 命名空间映射配置
-NAMESPACE_MAP = {
-    "gd": "students-gd",
-    "cd": "students-cd"
-}
-
 # ================= K8s Client Init =================
 # 注意：在生产环境中，这段代码应放在 core/k8s_client.py 中，并作为依赖注入
 import os
@@ -60,12 +53,14 @@ networking_v1 = client.NetworkingV1Api()
 class DeployRequest(BaseModel):
     image: str
     project_type: str # 'gd' or 'cd'
+    build_id: Optional[int] = None
 
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "image": "registry.hydrosim.cn/gd/s2025_001:abc123",
-                "project_type": "gd"
+                "project_type": "gd",
+                "build_id": 123
             }
         }
 
@@ -141,19 +136,13 @@ def trigger_deploy(
     db: Session = Depends(deps.get_db),
 ):
     """
-    部署控制器核心接口：
-    1. 根据 project_type 确定 namespace
-    2. 检查 Deployment 是否存在
-    3. 不存在 -> Create (Deploy + Svc + Ingress)
-    4. 存在 -> Patch (Image Update)
+    ??????????
+    1. ?? project_type ?? namespace
+    2. ?? Deployment ????
+    3. ??? -> Create (Deploy + Svc + Ingress)
+    4. ?? -> Patch (Image Update)
     """
-    
-    # 1. 参数校验与 Namespace 映射
-    if req.project_type not in NAMESPACE_MAP:
-        raise HTTPException(status_code=400, detail=f"Invalid project_type. Must be one of {list(NAMESPACE_MAP.keys())}")
-    
-    namespace = NAMESPACE_MAP[req.project_type]
-    deployment_name = f"student-{student_code}" # 资源命名规范
+
     student = (
         db.query(models.Student)
         .filter(models.Student.student_code == student_code)
@@ -161,138 +150,32 @@ def trigger_deploy(
     )
     if not student:
         raise HTTPException(status_code=404, detail="Student not found")
-    if getattr(student.project_type, "value", student.project_type) != req.project_type:
-        raise HTTPException(status_code=400, detail="Project type mismatch")
     if actor is not None:
         _assert_student_access(actor, student)
 
-    settings = get_or_create_settings(db)
-    host_prefix, domain_suffix, full_domain = get_student_domain_parts(
-        settings, student_code, req.project_type
-    )
-    deployment_record = models.Deployment(
-        student_id=student.id,
-        image_tag=req.image,
-        status=DeploymentStatus.deploying,
-        message="Deployment requested",
-        last_deploy_time=datetime.utcnow(),
-    )
-    db.add(deployment_record)
-    db.commit()
-    db.refresh(deployment_record)
-
-    logger.info(f"Starting deployment for {student_code} in {namespace}, image={req.image}")
-
     try:
-        # 2. 检查 Deployment 是否存在
-        exists = False
-        try:
-            apps_v1.read_namespaced_deployment(name=deployment_name, namespace=namespace)
-            exists = True
-        except ApiException as e:
-            if e.status != 404:
-                raise e # 抛出其他异常 (如 403 Forbidden)
-        
-        # 3. 分支逻辑
-        if exists:
-            # === Scenario A: Update ===
-            patch_body = {
-                "spec": {
-                    "template": {
-                        "spec": {
-                            "containers": [
-                                {
-                                    "name": "app",
-                                    "image": req.image
-                                }
-                            ]
-                        }
-                    }
-                }
-            }
-            apps_v1.patch_namespaced_deployment(
-                name=deployment_name,
-                namespace=namespace,
-                body=patch_body
-            )
-            result_status = "updated"
-            logger.info(f"Patched deployment {deployment_name}")
-            
-        else:
-            # === Scenario B: Create New ===
-            from app.core.k8s_resources import generate_resources
-            
-            # 使用统一的资源生成器
-            resources = generate_resources(
-                student_code=student_code,
-                image=req.image,
-                namespace=namespace,
-                domain_suffix=domain_suffix,
-                host_prefix=host_prefix
-            )
-            
-            # B1. Create Deployment
-            apps_v1.create_namespaced_deployment(
-                namespace=namespace, 
-                body=resources["deployment"]
-            )
-            logger.info(f"Created deployment {deployment_name}")
-
-            # B2. Create Service
-            # 忽略 Service 已存在错误 (幂等性)
-            try:
-                core_v1.create_namespaced_service(
-                    namespace=namespace, 
-                    body=resources["service"]
-                )
-            except ApiException as e:
-                if e.status != 409: raise e
-
-            # B3. Create Ingress
-            try:
-                networking_v1.create_namespaced_ingress(
-                    namespace=namespace, 
-                    body=resources["ingress"]
-                )
-            except ApiException as e:
-                if e.status != 409: raise e
-
-            result_status = "created"
-
-        deployment_record.status = DeploymentStatus.running
-        deployment_record.message = f"Project {deployment_name} successfully {result_status}"
-        deployment_record.last_deploy_time = datetime.utcnow()
-
-        if student.domain != full_domain:
-            student.domain = full_domain
-
-        db.commit()
-        return {
-            "status": result_status,
-            "message": f"Project {deployment_name} successfully {result_status}",
-            "url": f"http://{full_domain}"
-        }
-
+        result = deploy_student_resources(
+            db=db,
+            student=student,
+            image=req.image,
+            project_type=req.project_type,
+            build_id=req.build_id,
+            apps_v1=apps_v1,
+            core_v1=core_v1,
+            networking_v1=networking_v1,
+        )
+        return result
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except ApiException as e:
         logger.error(f"K8s API failed: {e}")
         logger.error(f"Exc Body: {e.body}")
-        # 详细错误处理：权限、配额等
-        deployment_record.status = DeploymentStatus.failed
-        deployment_record.message = f"Kubernetes Operation Failed: {e.reason}"
-        deployment_record.last_deploy_time = datetime.utcnow()
-        db.commit()
         if e.status == 403:
-             raise HTTPException(status_code=500, detail="Deployment Controller RBAC permission denied.")
+            raise HTTPException(status_code=500, detail="Deployment Controller RBAC permission denied.")
         raise HTTPException(status_code=500, detail=f"Kubernetes Operation Failed: {e.reason}, Body: {e.body}")
     except Exception as e:
-        deployment_record.status = DeploymentStatus.failed
-        deployment_record.message = str(e)
-        deployment_record.last_deploy_time = datetime.utcnow()
-        db.commit()
         logger.exception("Unexpected error")
         raise HTTPException(status_code=500, detail=str(e))
-
-from app.services.deployment_monitor import get_deployment_status
 
 @router.delete("/{student_code}/")
 def delete_deployment(
@@ -325,7 +208,7 @@ def delete_deployment(
     _assert_student_access(actor, student)
         
     namespace = NAMESPACE_MAP[project_type]
-    deployment_name = f"student-{student_code}"
+    deployment_name = student_resource_name(student_code)
     
     deleted_resources = []
     errors = []
@@ -419,7 +302,10 @@ def list_cluster_resources(
             for d in deps.items:
                 # Parse metadata
                 name = d.metadata.name # e.g. student-s2025_001
-                code = name.replace("student-", "") if name.startswith("student-") else name
+                labels = d.metadata.labels or {}
+                code = labels.get("student")
+                if not code:
+                    code = name.replace("student-", "") if name.startswith("student-") else name
                 
                 # Basic Status
                 ready = d.status.ready_replicas or 0

@@ -111,6 +111,34 @@ const SettingsPage: React.FC = () => {
                             </Form>
                         </div>
                     </div>
+
+                    {/* Build & Deploy Configuration */}
+                    <div className="modern-card settings-card">
+                        <div className="card-header">
+                            <span className="card-title">构建与部署配置</span>
+                            <i className="dx-icon-box" style={{ color: 'var(--warning-6)' }}></i>
+                        </div>
+                        <div className="card-body">
+                            <Form formData={settings} labelLocation="top" colCount={1}>
+                                <FormItem dataField="build_namespace" editorType="dxTextBox" editorOptions={{ stylingMode: 'filled' }}>
+                                    <Label text="K8s Build Namespace" />
+                                    <div className="field-hint">Kaniko Job 运行的命名空间 (e.g. gitea-runner)</div>
+                                </FormItem>
+                                <FormItem dataField="default_image_repo_template" editorType="dxTextBox" editorOptions={{ stylingMode: 'filled' }}>
+                                    <Label text="默认镜像仓库模板" />
+                                    <div className="field-hint">支持变量: {'{{registry}}'}, {'{{student_code}}'}</div>
+                                </FormItem>
+                                <FormItem dataField="default_registry_id" editorType="dxNumberBox" editorOptions={{ stylingMode: 'filled' }}>
+                                    <Label text="默认 Registry ID" />
+                                </FormItem>
+                                <GroupItem>
+                                    <div className="settings-actions">
+                                        <Button text="保存更改" type="default" stylingMode="contained" onClick={handleSaveSettings} />
+                                    </div>
+                                </GroupItem>
+                            </Form>
+                        </div>
+                    </div>
                 </div>
 
                 {/* Semester Management */}

@@ -29,3 +29,5 @@ class Deployment(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     student = relationship("Student", back_populates="deployments")
+    build_id = Column(Integer, ForeignKey("builds.id", ondelete="SET NULL"), nullable=True)
+    build = relationship("Build", back_populates="deployments")

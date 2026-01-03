@@ -1,6 +1,8 @@
 from kubernetes import client
 from typing import Dict, List, Optional
 
+from app.core.naming import student_dns_label, student_resource_name
+
 class StudentProjectBuilder:
     """
     负责使用 Kubernetes Python Client 对象模型生成学生项目的资源对象。
@@ -16,13 +18,14 @@ class StudentProjectBuilder:
         host_prefix: str = ""
     ):
         self.student_code = student_code
+        self.student_dns_label = student_dns_label(student_code)
         self.image = image
         self.namespace = namespace
         self.domain_suffix = domain_suffix.lstrip(".") # 确保无前导点
         self.host_prefix = host_prefix or ""
         
         # 统一命名规范：student-{code}
-        self.app_name = f"student-{student_code}"
+        self.app_name = student_resource_name(student_code)
         self.labels = {
             "app": self.app_name,
             "student": student_code,
@@ -141,7 +144,7 @@ class StudentProjectBuilder:
         生成 V1Ingress 对象
         Host: {student_code}.{domain_suffix}
         """
-        host = f"{self.host_prefix}{self.student_code}.{self.domain_suffix}"
+        host = f"{self.host_prefix}{self.student_dns_label}.{self.domain_suffix}"
         
         # 路径规则
         path = client.V1HTTPIngressPath(

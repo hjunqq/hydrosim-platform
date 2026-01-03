@@ -11,6 +11,10 @@ class SystemSettingBase(BaseModel):
     contact_email: Optional[EmailStr] = None
     help_url: Optional[str] = None
     footer_text: Optional[str] = None
+    
+    build_namespace: Optional[str] = None
+    default_registry_id: Optional[int] = None
+    default_image_repo_template: Optional[str] = None
 
 class SystemSettingUpdate(SystemSettingBase):
     pass

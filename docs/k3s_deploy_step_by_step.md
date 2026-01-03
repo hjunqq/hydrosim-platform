@@ -30,6 +30,18 @@ Step 0.1: 配置 Gitea Actions 自动部署（推荐）
 **运行器要求（必须）**
 - 本文使用 **k3s 内部构建（kaniko）**，不再依赖 runner 上的 Docker
 - runner 只需要能访问 Kubernetes API（kubectl）并具备创建 Job/Secret 的权限
+  - 建议把 runner 部署在集群内，直接使用 ServiceAccount，无需 KUBECONFIG_DATA
+
+**如果 runner 在集群内**
+1) 确认 runner Pod 挂载了默认 ServiceAccount（一般是自动挂载）
+2) 给 runner ServiceAccount 授权（示例，按你实际命名修改）：
+```bash
+kubectl -n gitea create rolebinding gitea-runner-edit \
+  --clusterrole=edit \
+  --serviceaccount=gitea:gitea-runner \
+  -n hydrosim
+```
+3) 建议在 Secrets 中设置 `APPLY_BASE=false`，`deploy/base` 只需管理员手动执行一次
 
 **准备 CI 专用 kubeconfig（一次性）**
 ```bash
@@ -85,6 +97,7 @@ Windows PowerShell（已生成 kubeconfig 文件时）：
 - `KUBECONFIG_DATA`（上一步 base64 输出）
 - `KUBE_SERVER`（可选，覆盖 kubeconfig 里的 server）
 - `KUBE_INSECURE`（可选，设为 `true` 可跳过 k3s 自签证书校验）
+- `APPLY_BASE`（可选，设为 `false` 跳过 `deploy/base`，集群内 runner 推荐）
 - `DATABASE_URL`, `JWT_SECRET_KEY`
 - `GITEA_URL`, `GITEA_TOKEN`（如无需可留空）
 - `GITEA_USERNAME`（可选，手动 checkout 需要时使用）
@@ -93,6 +106,7 @@ Windows PowerShell（已生成 kubeconfig 文件时）：
 - `GIT_SSL_NO_VERIFY`（可选，设为 `true` 可临时跳过 Git SSL 校验）
 - `REGISTRY_CA_CERT`（可选，私有镜像仓库自签证书 PEM，如使用 `REGISTRY_INSECURE` 可省略）
 - `MINIO_ENDPOINT`, `MINIO_BUCKET`, `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY`（如无需可留空）
+- `MINIO_PUBLIC_ENDPOINT`（可选，门户不在集群内时使用，如 `https://minio.hydrosim.cn`）
 - `DEPLOY_TRIGGER_TOKEN`（用于学生仓库自动部署）
 - `RUN_DB_MIGRATION`（可选，设为 `true`）
 - `APPLY_POSTGRES`（可选，设为 `false` 可跳过内置 Postgres 部署）

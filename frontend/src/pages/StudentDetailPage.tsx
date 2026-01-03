@@ -8,6 +8,8 @@ import notify from 'devextreme/ui/notify'
 import { studentsApi, Student } from '../api/students'
 import { deploymentsApi, DeployRequest, DeploymentStatus, DeploymentRecord } from '../api/deployments'
 import DeploymentStatusModal from '../components/DeploymentStatusModal'
+import BuildHistory from '../components/BuildHistory'
+import BuildConfigModal from '../components/BuildConfigModal'
 
 const StudentDetailPage = () => {
     const { id } = useParams()
@@ -24,6 +26,9 @@ const StudentDetailPage = () => {
     const [isDeployPopupVisible, setIsDeployPopupVisible] = useState(false)
     const [isDeployStatusVisible, setIsDeployStatusVisible] = useState(false)
     const [deployForm, setDeployForm] = useState<DeployRequest>({ image: 'nginx:alpine', project_type: 'gd' })
+
+    // Build Config Modal State
+    const [isConfigPopupVisible, setIsConfigPopupVisible] = useState(false)
 
     const loadData = async () => {
         if (!id) return
@@ -162,7 +167,7 @@ const StudentDetailPage = () => {
                         </span>
                     </h1>
                     <div style={{ display: 'flex', gap: 8 }}>
-                        <button className="btn btn-default" onClick={() => notify('编辑功能开发中', 'info', 2000)}>编辑配置</button>
+                        <button className="btn btn-default" onClick={() => setIsConfigPopupVisible(true)}>编辑配置</button>
                         <button className="btn btn-primary" onClick={() => setIsDeployPopupVisible(true)}>部署新版本</button>
                         {isRunning && student.domain && (
                             <button className="btn btn-default" onClick={() => window.open(`http://${student.domain}`, '_blank')}>访问网站</button>
@@ -257,10 +262,16 @@ const StudentDetailPage = () => {
                     </div>
                 </div>
 
-                {/* History Card (Full Width) */}
-                <div className="modern-card" style={{ gridColumn: '1 / -1' }}>
+                {/* Build History (Full Width) */}
+                <div style={{ gridColumn: '1 / -1' }}>
+                    <BuildHistory studentId={student.id} />
+                </div>
+
+                {/* Deploy History */}
+                <div className="modern-card" style={{ gridColumn: '1 / -1', marginTop: 20 }}>
                     <div className="card-header">
-                        <span className="card-title">部署历史 (History)</span>
+                        {/* Optional: make this collapsible or just header */}
+                        <span className="card-title">旧版部署历史 (Legacy History)</span>
                     </div>
                     <table className="data-table">
                         <thead>
@@ -301,6 +312,7 @@ const StudentDetailPage = () => {
                         </tbody>
                     </table>
                 </div>
+
             </div>
 
             {/* Deploy Config Modal */}
@@ -329,6 +341,12 @@ const StudentDetailPage = () => {
                     </div>
                 </form>
             </Popup>
+
+            <BuildConfigModal
+                visible={isConfigPopupVisible}
+                onClose={() => setIsConfigPopupVisible(false)}
+                studentId={student.id}
+            />
 
             {/* Deployment Status Modal */}
             <DeploymentStatusModal

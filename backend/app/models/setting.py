@@ -14,3 +14,8 @@ class SystemSetting(Base):
     contact_email = Column(String, nullable=True)
     help_url = Column(String, nullable=True)
     footer_text = Column(String, nullable=True)
+    
+    # Build & Deploy Settings
+    build_namespace = Column(String, default="hydrosim")
+    default_registry_id = Column(Integer, nullable=True) # ForeignKey to Registry if implemented, or just ID
+    default_image_repo_template = Column(String, default="{{registry}}/hydrosim/{{student_code}}")

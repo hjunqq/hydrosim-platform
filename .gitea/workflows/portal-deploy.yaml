@@ -49,6 +49,12 @@ jobs:
           echo "GITHUB_REPOSITORY=${GITHUB_REPOSITORY:-}"
           echo "GITHUB_REF=${GITHUB_REF:-}"
           echo "GITEA_SERVER_URL=${GITEA_SERVER_URL:-}"
+          echo "KUBERNETES_SERVICE_HOST=${KUBERNETES_SERVICE_HOST:-}"
+          if [ -f /var/run/secrets/kubernetes.io/serviceaccount/token ]; then
+            echo "SA_TOKEN_PRESENT=yes"
+          else
+            echo "SA_TOKEN_PRESENT=no"
+          fi
           uname -a || true
           id || true
           pwd
@@ -150,9 +156,43 @@ jobs:
           echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
 
       - name: Configure kubeconfig
+        env:
+          KUBECONFIG_DATA: ${{ secrets.KUBECONFIG_DATA }}
         run: |
           set -e
-          echo "${{ secrets.KUBECONFIG_DATA }}" | base64 -d > "$RUNNER_TEMP/kubeconfig"
+          if [ -n "${KUBECONFIG_DATA:-}" ]; then
+            echo "kubeconfig source: KUBECONFIG_DATA"
+            echo "$KUBECONFIG_DATA" | base64 -d > "$RUNNER_TEMP/kubeconfig"
+          elif [ -f /var/run/secrets/kubernetes.io/serviceaccount/token ]; then
+            echo "kubeconfig source: in-cluster serviceaccount"
+            SERVER="https://${KUBERNETES_SERVICE_HOST}:${KUBERNETES_SERVICE_PORT}"
+            TOKEN="$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)"
+            CA="/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+            NS="$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace)"
+            cat > "$RUNNER_TEMP/kubeconfig" <<EOF
+apiVersion: v1
+kind: Config
+clusters:
+- cluster:
+    certificate-authority: ${CA}
+    server: ${SERVER}
+  name: in-cluster
+users:
+- name: sa
+  user:
+    token: ${TOKEN}
+contexts:
+- context:
+    cluster: in-cluster
+    user: sa
+    namespace: ${NS}
+  name: in-cluster
+current-context: in-cluster
+EOF
+          else
+            echo "Missing KUBECONFIG_DATA and no in-cluster serviceaccount token found."
+            exit 1
+          fi
           if [ -n "${{ secrets.KUBE_SERVER }}" ]; then
             CLUSTER="$(KUBECONFIG=$RUNNER_TEMP/kubeconfig kubectl config get-clusters | tail -n +2 | head -n 1)"
             KUBECONFIG=$RUNNER_TEMP/kubeconfig kubectl config set-cluster "$CLUSTER" --server="${{ secrets.KUBE_SERVER }}"
@@ -166,24 +206,35 @@ jobs:
       - name: Debug kubeconfig
         run: |
           set +e
-          ls -la "$RUNNER_TEMP/kubeconfig"
+          exec 2>&1
+          echo "RUNNER_TEMP=${RUNNER_TEMP:-}"
+          export KUBECONFIG="${KUBECONFIG:-$RUNNER_TEMP/kubeconfig}"
           echo "KUBECONFIG=$KUBECONFIG"
-          kubectl config get-contexts || true
-          kubectl config current-context || true
-          kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}{"\n"}' || true
-          kubectl config view --minify -o jsonpath='{.users[0].name}{"\n"}' || true
+          ls -la "$RUNNER_TEMP" || true
+          ls -la "$KUBECONFIG" || true
+          if [ -f "$KUBECONFIG" ]; then
+            echo "kubeconfig_bytes=$(wc -c < "$KUBECONFIG")"
+          else
+            echo "kubeconfig missing"
+          fi
+          kubectl config get-contexts 2>&1 || true
+          kubectl config current-context 2>&1 || true
+          kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}{"\n"}' 2>&1 || true
+          kubectl config view --minify -o jsonpath='{.users[0].name}{"\n"}' 2>&1 || true
 
       - name: Verify cluster access
         run: |
           set -e
+          exec 2>&1
           set -x
           if ! command -v kubectl >/dev/null 2>&1; then
             echo "kubectl not found in PATH."
             exit 1
           fi
+          export KUBECONFIG="${KUBECONFIG:-$RUNNER_TEMP/kubeconfig}"
           kubectl version --client --output=yaml
           kubectl cluster-info --request-timeout=5s
-          kubectl get nodes -o wide --request-timeout=5s
+          kubectl -n hydrosim get pods --request-timeout=5s
 
       - name: Prepare in-cluster build secrets
         shell: sh
@@ -427,7 +478,9 @@ jobs:
 
       - name: Apply base and postgres manifests
         run: |
-          kubectl apply -f deploy/base/
+          if [ "${{ secrets.APPLY_BASE }}" != "false" ]; then
+            kubectl apply -f deploy/base/
+          fi
           if [ "${{ secrets.APPLY_POSTGRES }}" != "false" ]; then
             kubectl apply -f deploy/infra/postgres.yaml
           fi

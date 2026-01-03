@@ -25,11 +25,15 @@ class Settings(BaseSettings):
     # Gitea (可选)
     GITEA_URL: Optional[str] = None
     GITEA_TOKEN: Optional[str] = None
+    GITEA_WEBHOOK_SECRET: Optional[str] = None
+    GITEA_SSH_INTERNAL_HOST: Optional[str] = None
+    GITEA_SSH_INTERNAL_PORT: Optional[int] = None
     GITEA_ADMIN_USER: str = "gitea_admin"
     GITEA_ADMIN_PASSWORD: str = ""
     
     # MinIO (可选)
     MINIO_ENDPOINT: Optional[str] = None
+    MINIO_PUBLIC_ENDPOINT: Optional[str] = None
     MINIO_ACCESS_KEY: Optional[str] = None
     MINIO_SECRET_KEY: Optional[str] = None
     MINIO_BUCKET: str = "hydrosim-platform"
