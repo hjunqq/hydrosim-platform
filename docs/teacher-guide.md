@@ -113,8 +113,11 @@ DB_PORT=5432
 DB_NAME=student_<id>
 DB_USER=<username>
 DB_PASS=<password>
+DATA_DIR=/data
+DB_FILE=/data/app.db
 ```
 - 应用端口统一从 `PORT` 环境变量读取。
+- 若使用 SQLite 或本地文件存储，请优先读取 `DATA_DIR`/`DB_FILE`，确保持久化卷生效。
 
 ### 4.5 备份策略（7/30）
 - **每日备份**：保留 7 天。
@@ -162,6 +165,22 @@ A: 通常是因为镜像地址错误，或者集群没有权限拉取该私有�
 A: 
 1. 检查 Ingress Controller 是否正常工作。
 2. 确保本地 hosts 或 DNS 已解析该域名到集群 Ingress IP。
+
+**Q: HTTPS 证书如何配置（泛域名）？**
+A: 在 `students-gd` / `students-cd` 命名空间创建同名 TLS Secret，然后在后端配置 `STUDENT_TLS_SECRET_NAME`。
+示例：
+```bash
+kubectl -n students-gd create secret tls student-wildcard-tls \
+  --cert=fullchain.pem \
+  --key=privkey.pem
+kubectl -n students-cd create secret tls student-wildcard-tls \
+  --cert=fullchain.pem \
+  --key=privkey.pem
+```
+在后端 `.env` 中设置：
+```env
+STUDENT_TLS_SECRET_NAME=student-wildcard-tls
+```
 
 **Q: 如何更新应用？**
 A: 学生推送新代码并构建新镜像 tag 后，点击 "重新部署" 并填入新的 Image Tag 即可触发滚动更新。

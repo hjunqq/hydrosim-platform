@@ -18,7 +18,7 @@ spec:
       serviceAccountName: portal-controller-sa
       containers:
         - name: portal-backend
-          image: registry.hydrosim.cn/hydrosim-portal-backend:1.0.0
+          image: registry.hydrosim.cn/hydrosim-portal-backend:1.1.0
           imagePullPolicy: Always
           command: ["uvicorn"]
           args:

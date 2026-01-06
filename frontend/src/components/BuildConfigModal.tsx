@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { Popup } from 'devextreme-react/popup';
 import Form, { Item as FormItem, Label, RequiredRule } from 'devextreme-react/form';
 import Button from 'devextreme-react/button';
 import notify from 'devextreme/ui/notify';
 import { buildConfigsApi, BuildConfig } from '../api/buildConfigs';
+import { studentsApi } from '../api/students';
 
 interface BuildConfigModalProps {
     visible: boolean;
@@ -16,6 +17,14 @@ const BuildConfigModal: React.FC<BuildConfigModalProps> = ({ visible, onClose, s
     const [config, setConfig] = useState<Partial<BuildConfig>>({});
     const [loading, setLoading] = useState(false);
     const [keyLoading, setKeyLoading] = useState(false);
+    const showImageRepoWarning = !config.image_repo;
+    const defaultConfig: Partial<BuildConfig> = {
+        branch: 'main',
+        dockerfile_path: 'Dockerfile',
+        context_path: '.',
+        auto_build: true,
+        auto_deploy: true
+    };
 
     useEffect(() => {
         if (visible && studentId) {
@@ -27,10 +36,29 @@ const BuildConfigModal: React.FC<BuildConfigModalProps> = ({ visible, onClose, s
         try {
             setLoading(true);
             const data = await buildConfigsApi.getConfig(studentId);
-            setConfig(data || {});
+            const merged = { ...defaultConfig, ...(data || {}) };
+            setConfig(merged);
+            if (!merged.repo_url) {
+                try {
+                    const student = await studentsApi.get(studentId);
+                    if (student?.git_repo_url) {
+                        setConfig(prev => ({ ...prev, repo_url: student.git_repo_url }));
+                    }
+                } catch (studentErr) {
+                    console.error('Failed to load student repo_url', studentErr);
+                }
+            }
         } catch (err) {
-            console.error("Failed to load config", err);
-            // If 404, empty config is fine, logic handled in backend or default empty
+            console.error('Failed to load config', err);
+            setConfig({ ...defaultConfig });
+            try {
+                const student = await studentsApi.get(studentId);
+                if (student?.git_repo_url) {
+                    setConfig(prev => ({ ...prev, repo_url: student.git_repo_url }));
+                }
+            } catch (studentErr) {
+                console.error('Failed to load student repo_url', studentErr);
+            }
         } finally {
             setLoading(false);
         }
@@ -56,11 +84,11 @@ const BuildConfigModal: React.FC<BuildConfigModalProps> = ({ visible, onClose, s
         if (!studentId) return;
         try {
             setKeyLoading(true);
-            const data = await buildConfigsApi.generateDeployKey(studentId, force);
-            setConfig(data || {});
-            notify(force ? 'Deploy key rotated' : 'Deploy key created', 'success', 2000);
+            const data = await buildConfigsApi.generateDeployKey(studentId, force, true);
+            setConfig(prev => ({ ...prev, ...(data || {}) }));
+            notify(force ? 'Deploy Key 已轮换' : 'Deploy Key 已生成', 'success', 2000);
         } catch (err: any) {
-            notify(err.response?.data?.detail || 'Deploy key generation failed', 'error', 3000);
+            notify(err.response?.data?.detail || 'Deploy Key 生成失败', 'error', 3000);
         } finally {
             setKeyLoading(false);
         }
@@ -73,15 +101,15 @@ const BuildConfigModal: React.FC<BuildConfigModalProps> = ({ visible, onClose, s
             title="构建配置 (Build Configuration)"
             showTitle={true}
             dragEnabled={false}
+            position={{ my: 'center', at: 'center', of: window }}
             width={600}
             height="auto"
         >
             {loading ? (
                 <div style={{ textAlign: 'center', padding: 20 }}>Loading...</div>
             ) : (
-                <form onSubmit={handleSave}>
+                <form onSubmit={handleSave} style={{ maxHeight: '70vh', overflowY: 'auto' }}>
                     <Form formData={config} onFieldDataChanged={handleFormChange}>
-
                         <FormItem itemType="group" caption="代码仓库">
                             <FormItem dataField="repo_url">
                                 <Label text="Git Repo URL" />
@@ -105,6 +133,11 @@ const BuildConfigModal: React.FC<BuildConfigModalProps> = ({ visible, onClose, s
                             <FormItem dataField="image_repo">
                                 <Label text="Target Image Repo (Registry)" />
                             </FormItem>
+                            {showImageRepoWarning && (
+                                <div style={{ fontSize: 12, color: 'var(--warning-6)', marginTop: 4 }}>
+                                    镜像仓库未配置，构建会失败。可在此填写或前往“系统设置”配置默认镜像仓库。
+                                </div>
+                            )}
                         </FormItem>
 
                         <FormItem itemType="group" caption="自动化">
@@ -130,7 +163,7 @@ const BuildConfigModal: React.FC<BuildConfigModalProps> = ({ visible, onClose, s
                             render={() => (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                                     <div style={{ fontSize: 12, color: 'var(--text-3)' }}>
-                                        ??? Key ??? Gitea Deploy Key??????????
+                                        用于私有仓库拉取代码，将自动尝试写入 Gitea Deploy Keys（只读）。
                                     </div>
                                     <pre style={{
                                         background: 'var(--fill-2)',
@@ -142,11 +175,11 @@ const BuildConfigModal: React.FC<BuildConfigModalProps> = ({ visible, onClose, s
                                         minHeight: 80,
                                         margin: 0
                                     }}>
-                                        {config.deploy_key_public || '???? Deploy Key'}
+                                        {config.deploy_key_public || '尚未生成 Deploy Key'}
                                     </pre>
                                     <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                                         <Button
-                                            text={config.deploy_key_public ? '??? Key' : '??? Key'}
+                                            text={config.deploy_key_public ? '轮换 Key' : '生成 Key'}
                                             type="default"
                                             stylingMode="outlined"
                                             disabled={keyLoading}
@@ -154,19 +187,18 @@ const BuildConfigModal: React.FC<BuildConfigModalProps> = ({ visible, onClose, s
                                         />
                                         {config.deploy_key_fingerprint && (
                                             <span style={{ fontSize: 12, color: 'var(--text-3)' }}>
-                                                ???: {config.deploy_key_fingerprint}
+                                                指纹: {config.deploy_key_fingerprint}
                                             </span>
                                         )}
                                     </div>
                                 </div>
                             )}
                         />
-
-                        <div style={{ marginTop: 24, textAlign: 'right' }}>
-                            <Button text="取消" onClick={onClose} type="normal" stylingMode="outlined" style={{ marginRight: 10 }} />
-                            <Button text="保存配置" useSubmitBehavior={true} type="default" />
-                        </div>
                     </Form>
+                    <div style={{ marginTop: 24, textAlign: 'right' }}>
+                        <Button text="取消" onClick={onClose} type="normal" stylingMode="outlined" style={{ marginRight: 10 }} />
+                        <Button text="保存配置" useSubmitBehavior={true} type="default" />
+                    </div>
                 </form>
             )}
         </Popup>

@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import DataGrid, { Column, Paging, Scrolling, Selection } from 'devextreme-react/data-grid';
+import DataGrid, { Column, Paging, Scrolling } from 'devextreme-react/data-grid';
 import { Popup } from 'devextreme-react/popup';
 import Button from 'devextreme-react/button';
 import { ScrollView } from 'devextreme-react/scroll-view';
-import notify from 'devextreme/ui/notify';
 import { buildsApi, Build } from '../api/builds';
 
 interface BuildHistoryProps {
@@ -12,25 +11,25 @@ interface BuildHistoryProps {
 
 const BuildHistory: React.FC<BuildHistoryProps> = ({ studentId }) => {
     const [builds, setBuilds] = useState<Build[]>([]);
-    const [loading, setLoading] = useState(false);
     const [logPopupVisible, setLogPopupVisible] = useState(false);
     const [logContent, setLogContent] = useState('');
     const [currentBuildId, setCurrentBuildId] = useState<number | null>(null);
+    const popupContainer = typeof document === 'undefined' ? undefined : document.body;
 
     const loadBuilds = async () => {
         try {
-            setLoading(true);
             const data = await buildsApi.getBuilds({ student_id: studentId, limit: 50 });
             setBuilds(data);
         } catch (err) {
             console.error("Failed to load builds", err);
-        } finally {
-            setLoading(false);
         }
     };
 
     useEffect(() => {
         if (studentId) {
+            setLogPopupVisible(false);
+            setCurrentBuildId(null);
+            setLogContent('');
             loadBuilds();
             // Optional: polling
             const interval = setInterval(loadBuilds, 10000);
@@ -127,13 +126,16 @@ const BuildHistory: React.FC<BuildHistoryProps> = ({ studentId }) => {
                 />
             </DataGrid>
 
-            {/* Log Popup */}
             <Popup
                 visible={logPopupVisible}
                 onHiding={() => setLogPopupVisible(false)}
-                title={`Build #${currentBuildId} Logs`}
+                title={`构建日志 #${currentBuildId ?? ''}`}
                 showTitle={true}
-                dragEnabled={true}
+                dragEnabled={false}
+                shading={true}
+                showCloseButton={true}
+                container={popupContainer}
+                position="center"
                 width={800}
                 height={600}
                 resizeEnabled={true}

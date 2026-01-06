@@ -13,6 +13,10 @@ from app.core.config import settings
 from app.core.naming import student_resource_name
 from app.core.security import verify_token
 from app.services.deploy_service import deploy_student_resources, NAMESPACE_MAP
+from app.services.deployment_monitor import get_deployment_status
+from app.services.build_orchestrator import build_orchestrator
+from app.models.build import Build, BuildStatus
+from app.models.build_config import BuildConfig
 
 # ================= Configuration =================
 # 配置日志
@@ -68,6 +72,14 @@ class DeployResponse(BaseModel):
     status: str
     message: str
     url: Optional[str] = None
+
+class DeployBuildRequest(BaseModel):
+    build_id: Optional[int] = None
+    project_type: Optional[str] = None
+
+class DeployBuildResponse(DeployResponse):
+    build_id: Optional[int] = None
+    image: Optional[str] = None
 
 # ================= Router =================
 router = APIRouter()
@@ -165,6 +177,106 @@ def trigger_deploy(
             networking_v1=networking_v1,
         )
         return result
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except ApiException as e:
+        logger.error(f"K8s API failed: {e}")
+        logger.error(f"Exc Body: {e.body}")
+        if e.status == 403:
+            raise HTTPException(status_code=500, detail="Deployment Controller RBAC permission denied.")
+        raise HTTPException(status_code=500, detail=f"Kubernetes Operation Failed: {e.reason}, Body: {e.body}")
+    except Exception as e:
+        logger.exception("Unexpected error")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/{student_code}/build/", response_model=DeployBuildResponse, status_code=202)
+def deploy_from_build(
+    student_code: str,
+    req: DeployBuildRequest,
+    actor: Optional[object] = Depends(get_deploy_actor),
+    db: Session = Depends(deps.get_db),
+):
+    student = (
+        db.query(models.Student)
+        .filter(models.Student.student_code == student_code)
+        .first()
+    )
+    if not student:
+        raise HTTPException(status_code=404, detail="Student not found")
+    if actor is not None:
+        _assert_student_access(actor, student)
+
+    project_type = req.project_type or getattr(student.project_type, "value", student.project_type)
+    if project_type not in NAMESPACE_MAP:
+        raise HTTPException(status_code=400, detail="Invalid project_type")
+
+    build_query = db.query(Build).filter(Build.student_id == student.id)
+    build = None
+    if req.build_id:
+        build = build_query.filter(Build.id == req.build_id).first()
+        if not build:
+            raise HTTPException(status_code=404, detail="Build not found")
+    else:
+        latest = build_query.order_by(Build.created_at.desc()).first()
+        if latest and latest.status in {BuildStatus.pending, BuildStatus.running}:
+            build_orchestrator.sync_build_status(db, latest)
+            db.refresh(latest)
+        if latest and latest.status == BuildStatus.success:
+            build = latest
+        else:
+            build = (
+                build_query.filter(Build.status == BuildStatus.success)
+                .order_by(Build.created_at.desc())
+                .first()
+            )
+
+    if not build:
+        raise HTTPException(status_code=404, detail="No successful build found")
+
+    if build.status in {BuildStatus.pending, BuildStatus.running}:
+        build_orchestrator.sync_build_status(db, build)
+        db.refresh(build)
+
+    if build.status != BuildStatus.success:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Build is not ready (status={build.status})",
+        )
+
+    build_config = (
+        db.query(BuildConfig)
+        .filter(BuildConfig.student_id == student.id)
+        .first()
+    )
+
+    try:
+        image = build_orchestrator.resolve_image_for_build(
+            db=db,
+            build=build,
+            build_config=build_config,
+            student=student,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    try:
+        result = deploy_student_resources(
+            db=db,
+            student=student,
+            image=image,
+            project_type=project_type,
+            build_id=build.id,
+            apps_v1=apps_v1,
+            core_v1=core_v1,
+            networking_v1=networking_v1,
+        )
+        return DeployBuildResponse(
+            status=result["status"],
+            message=result["message"],
+            url=result.get("url"),
+            build_id=build.id,
+            image=image,
+        )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except ApiException as e:

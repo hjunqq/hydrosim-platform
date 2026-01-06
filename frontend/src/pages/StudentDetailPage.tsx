@@ -4,9 +4,11 @@ import Button from 'devextreme-react/button'
 import Form, { Item as FormItem, Label, RequiredRule } from 'devextreme-react/form'
 import { Popup } from 'devextreme-react/popup'
 import notify from 'devextreme/ui/notify'
+import { confirm } from 'devextreme/ui/dialog'
 
 import { studentsApi, Student } from '../api/students'
 import { deploymentsApi, DeployRequest, DeploymentStatus, DeploymentRecord } from '../api/deployments'
+import { buildsApi } from '../api/builds'
 import DeploymentStatusModal from '../components/DeploymentStatusModal'
 import BuildHistory from '../components/BuildHistory'
 import BuildConfigModal from '../components/BuildConfigModal'
@@ -101,6 +103,50 @@ const StudentDetailPage = () => {
         }
     }
 
+    const handleTriggerBuild = async () => {
+        if (!student) return
+        try {
+            await buildsApi.triggerBuild(student.id)
+            notify('???????', 'success', 2000)
+        } catch (err: any) {
+            await handleBuildError(err)
+        }
+    }
+
+    const handleDeployLatestBuild = async () => {
+        if (!student) return
+        try {
+            await deploymentsApi.deployFromBuild(student.student_code, {
+                project_type: student.project_type
+            })
+            setIsDeployStatusVisible(true)
+            notify('部署任务已提交', 'success', 2000)
+            await loadDeployHistory(student.id)
+        } catch (err: any) {
+            notify(err.response?.data?.detail || '部署失败', 'error', 3000)
+        }
+    }
+
+    const getErrorDetail = (err: any) => {
+        const detail = err?.response?.data?.detail
+        if (!detail) return ''
+        return typeof detail === 'string' ? detail : String(detail)
+    }
+
+    const handleBuildError = async (err: any) => {
+        const detail = getErrorDetail(err)
+        if (detail.includes('Image repository is not configured')) {
+            const ok = await confirm('?????????????????', '????')
+            if (ok) {
+                setIsConfigPopupVisible(true)
+            } else {
+                notify('?????????? Registry?', 'info', 3000)
+            }
+            return
+        }
+        notify(detail || '????', 'error', 3000)
+    }
+
     const handleDeployFormChange = (e: any) => {
         setDeployForm(prev => ({ ...prev, [e.dataField]: e.value }))
     }
@@ -168,6 +214,8 @@ const StudentDetailPage = () => {
                     </h1>
                     <div style={{ display: 'flex', gap: 8 }}>
                         <button className="btn btn-default" onClick={() => setIsConfigPopupVisible(true)}>编辑配置</button>
+                        <button className="btn btn-default" onClick={handleTriggerBuild}>触发构建</button>
+                        <button className="btn btn-default" onClick={handleDeployLatestBuild}>部署最新构建</button>
                         <button className="btn btn-primary" onClick={() => setIsDeployPopupVisible(true)}>部署新版本</button>
                         {isRunning && student.domain && (
                             <button className="btn btn-default" onClick={() => window.open(`http://${student.domain}`, '_blank')}>访问网站</button>

@@ -43,6 +43,15 @@ class Settings(BaseSettings):
     K8S_NAMESPACE: str = "hydrosim"
     K8S_IN_CLUSTER: bool = False
     K8S_CONFIG_PATH: str = "~/.kube/config"
+
+    # Student PVC (optional)
+    STUDENT_PVC_ENABLED: bool = True
+    STUDENT_PVC_SIZE: str = "1Gi"
+    STUDENT_PVC_STORAGE_CLASS: Optional[str] = None
+    STUDENT_PVC_MOUNT_PATH: str = "/data"
+
+    # Student Ingress TLS (optional)
+    STUDENT_TLS_SECRET_NAME: Optional[str] = None
     
     # JWT (可选，但建议设置)
     JWT_SECRET_KEY: str = "change-me"

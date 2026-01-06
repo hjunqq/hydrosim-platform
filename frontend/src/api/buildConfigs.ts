@@ -17,13 +17,16 @@ export interface BuildConfig {
 
 export const buildConfigsApi = {
     getMyConfig: () =>
-        request.get<BuildConfig>('/build-configs/me'),
+        request.get<BuildConfig>('/api/v1/build-configs/me'),
 
     getConfig: (student_id: number) =>
-        request.get<BuildConfig>(`/build-configs/${student_id}`),
+        request.get<BuildConfig>(`/api/v1/build-configs/${student_id}`),
 
     updateConfig: (student_id: number, data: Partial<BuildConfig>) =>
-        request.put<BuildConfig>(`/build-configs/${student_id}`, data),
-    generateDeployKey: (student_id: number, force = false) =>
-        request.post<BuildConfig>(`/build-configs/${student_id}/deploy-key`, { force }),
+        request.put<BuildConfig>(`/api/v1/build-configs/${student_id}`, data),
+    generateDeployKey: (student_id: number, force = false, attachToGitea = true) =>
+        request.post<BuildConfig>(
+            `/api/v1/build-configs/${student_id}/deploy-key`,
+            { force, attach_to_gitea: attachToGitea }
+        ),
 };

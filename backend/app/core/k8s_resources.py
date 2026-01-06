@@ -15,7 +15,12 @@ class StudentProjectBuilder:
         image: str, 
         namespace: str, 
         domain_suffix: str,
-        host_prefix: str = ""
+        host_prefix: str = "",
+        pvc_enabled: bool = True,
+        pvc_size: str = "1Gi",
+        pvc_storage_class: Optional[str] = None,
+        pvc_mount_path: str = "/data",
+        tls_secret_name: Optional[str] = None,
     ):
         self.student_code = student_code
         self.student_dns_label = student_dns_label(student_code)
@@ -23,9 +28,15 @@ class StudentProjectBuilder:
         self.namespace = namespace
         self.domain_suffix = domain_suffix.lstrip(".") # 确保无前导点
         self.host_prefix = host_prefix or ""
+        self.pvc_enabled = pvc_enabled
+        self.pvc_size = pvc_size
+        self.pvc_storage_class = pvc_storage_class
+        self.pvc_mount_path = pvc_mount_path
+        self.tls_secret_name = tls_secret_name
         
         # 统一命名规范：student-{code}
         self.app_name = student_resource_name(student_code)
+        self.pvc_name = f"{self.app_name}-data"
         self.labels = {
             "app": self.app_name,
             "student": student_code,
@@ -45,6 +56,29 @@ class StudentProjectBuilder:
         强制策略: 1 replica, limited resources
         """
         # 1. Container 定义
+        volume_mounts = []
+        volumes = []
+        env_vars = [
+            client.V1EnvVar(name="STUDENT_CODE", value=self.student_code),
+            client.V1EnvVar(name="APP_NAME", value=self.app_name),
+        ]
+        if self.pvc_enabled:
+            volume_mounts.append(
+                client.V1VolumeMount(name="data", mount_path=self.pvc_mount_path)
+            )
+            volumes.append(
+                client.V1Volume(
+                    name="data",
+                    persistent_volume_claim=client.V1PersistentVolumeClaimVolumeSource(
+                        claim_name=self.pvc_name
+                    ),
+                )
+            )
+            env_vars.append(client.V1EnvVar(name="DATA_DIR", value=self.pvc_mount_path))
+            env_vars.append(
+                client.V1EnvVar(name="DB_FILE", value=f"{self.pvc_mount_path}/app.db")
+            )
+
         container = client.V1Container(
             name="app",
             image=self.image,
@@ -54,10 +88,7 @@ class StudentProjectBuilder:
                 limits={"cpu": "500m", "memory": "512Mi"},
                 requests={"cpu": "100m", "memory": "128Mi"}
             ),
-            env=[
-                client.V1EnvVar(name="STUDENT_CODE", value=self.student_code),
-                client.V1EnvVar(name="APP_NAME", value=self.app_name)
-            ],
+            env=env_vars,
             # 安全上下文
             security_context=client.V1SecurityContext(
                 run_as_non_root=True,
@@ -78,7 +109,8 @@ class StudentProjectBuilder:
                 initial_delay_seconds=15, # 给应用更多启动时间
                 period_seconds=20,
                 failure_threshold=3
-            )
+            ),
+            volume_mounts=volume_mounts or None,
         )
 
         # 2. Pod Template 定义
@@ -86,6 +118,10 @@ class StudentProjectBuilder:
             metadata=client.V1ObjectMeta(labels=self.labels),
             spec=client.V1PodSpec(
                 containers=[container],
+                volumes=volumes or None,
+                security_context=client.V1PodSecurityContext(
+                    fs_group=1000
+                ) if self.pvc_enabled else None,
                 restart_policy="Always"
             )
         )
@@ -139,6 +175,24 @@ class StudentProjectBuilder:
             spec=spec
         )
 
+    def build_pvc(self) -> Optional[client.V1PersistentVolumeClaim]:
+        if not self.pvc_enabled:
+            return None
+        resources = client.V1ResourceRequirements(
+            requests={"storage": self.pvc_size}
+        )
+        spec = client.V1PersistentVolumeClaimSpec(
+            access_modes=["ReadWriteOnce"],
+            resources=resources,
+            storage_class_name=self.pvc_storage_class or None,
+        )
+        return client.V1PersistentVolumeClaim(
+            api_version="v1",
+            kind="PersistentVolumeClaim",
+            metadata=self._get_common_metadata(self.pvc_name),
+            spec=spec,
+        )
+
     def build_ingress(self) -> client.V1Ingress:
         """
         生成 V1Ingress 对象
@@ -163,6 +217,16 @@ class StudentProjectBuilder:
             http=client.V1HTTPIngressRuleValue(paths=[path])
         )
 
+        annotations = {
+            "kubernetes.io/ingress.class": "traefik",
+            "traefik.ingress.kubernetes.io/router.entrypoints": "web,websecure" if self.tls_secret_name else "web",
+        }
+        if self.tls_secret_name:
+            annotations["traefik.ingress.kubernetes.io/router.tls"] = "true"
+        tls = None
+        if self.tls_secret_name:
+            tls = [client.V1IngressTLS(hosts=[host], secret_name=self.tls_secret_name)]
+
         return client.V1Ingress(
             api_version="networking.k8s.io/v1",
             kind="Ingress",
@@ -170,12 +234,13 @@ class StudentProjectBuilder:
                 name=self.app_name,
                 namespace=self.namespace,
                 labels=self.labels,
-                annotations={
-                    "kubernetes.io/ingress.class": "traefik",
-                    "traefik.ingress.kubernetes.io/router.entrypoints": "web"
-                }
+                annotations=annotations
             ),
-            spec=client.V1IngressSpec(rules=[rule])
+            spec=client.V1IngressSpec(
+                rules=[rule],
+                tls=tls,
+                ingress_class_name="traefik",
+            )
         )
 
 def generate_resources(
@@ -183,14 +248,31 @@ def generate_resources(
     image: str, 
     namespace: str,
     domain_suffix: str,
-    host_prefix: str = ""
+    host_prefix: str = "",
+    pvc_enabled: bool = True,
+    pvc_size: str = "1Gi",
+    pvc_storage_class: Optional[str] = None,
+    pvc_mount_path: str = "/data",
+    tls_secret_name: Optional[str] = None,
 ) -> Dict[str, object]:
     """
     Helper function to get all resources at once
     """
-    builder = StudentProjectBuilder(student_code, image, namespace, domain_suffix, host_prefix=host_prefix)
+    builder = StudentProjectBuilder(
+        student_code,
+        image,
+        namespace,
+        domain_suffix,
+        host_prefix=host_prefix,
+        pvc_enabled=pvc_enabled,
+        pvc_size=pvc_size,
+        pvc_storage_class=pvc_storage_class,
+        pvc_mount_path=pvc_mount_path,
+        tls_secret_name=tls_secret_name,
+    )
     return {
         "deployment": builder.build_deployment(),
+        "pvc": builder.build_pvc(),
         "service": builder.build_service(),
         "ingress": builder.build_ingress()
     }

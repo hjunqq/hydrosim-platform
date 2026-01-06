@@ -1056,3 +1056,15 @@ body::before {
 .dx-button-mode-text .dx-button-content {
   color: var(--primary-6);
 }
+
+.table-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+  align-items: center;
+}
+
+.table-actions .dx-button {
+  min-width: 64px;
+}

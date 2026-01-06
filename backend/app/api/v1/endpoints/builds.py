@@ -82,7 +82,10 @@ def get_build_logs(
     build_orchestrator.sync_build_status(db, build)
 
     if not build.log_object_key:
-        return {"content": "No logs available yet or check K8s console."}
+        live_content = build_orchestrator.get_live_logs(db, build)
+        if live_content:
+            return {"content": live_content, "live": True}
+        return {"content": "No logs available yet. Build is still running or logs are not ready."}
 
     content = build_log_service.get_log(build.log_object_key)
     if content is None:

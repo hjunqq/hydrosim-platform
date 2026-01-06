@@ -4,9 +4,11 @@ from fastapi import APIRouter, Depends, HTTPException, Body
 from sqlalchemy.orm import Session
 from app.api import deps, auth_deps
 from app.models.build_config import BuildConfig
+from app.models.student import Student
 from pydantic import BaseModel
 from app.schemas.build_config import BuildConfig as BuildConfigSchema
 from app.services.deploy_keys import generate_deploy_key_pair
+from app.services.gitea_service import gitea_service
 
 router = APIRouter()
 
@@ -26,6 +28,14 @@ class BuildConfigUpdate(BaseModel):
 
 class DeployKeyRequest(BaseModel):
     force: bool = False
+    attach_to_gitea: bool = True
+
+
+def _normalize_repo_url(value: Optional[str]) -> Optional[str]:
+    if not value:
+        return None
+    value = value.strip()
+    return value or None
 
 @router.get("/me", response_model=Optional[BuildConfigSchema])
 def read_my_build_config(
@@ -63,10 +73,20 @@ def update_build_config(
         
     config = db.query(BuildConfig).filter(BuildConfig.student_id == student_id).first()
     if not config:
-        config = BuildConfig(student_id=student_id)
+        student = db.query(Student).filter(Student.id == student_id).first()
+        repo_url = _normalize_repo_url(config_in.repo_url) if config_in.repo_url is not None else None
+        if not repo_url and student:
+            repo_url = _normalize_repo_url(student.git_repo_url)
+        if not repo_url:
+            raise HTTPException(status_code=400, detail="repo_url is required for new build config")
+        config = BuildConfig(student_id=student_id, repo_url=repo_url)
         db.add(config)
-        
-    if config_in.repo_url is not None: config.repo_url = config_in.repo_url
+
+    if config_in.repo_url is not None:
+        repo_url = _normalize_repo_url(config_in.repo_url)
+        if not repo_url:
+            raise HTTPException(status_code=400, detail="repo_url cannot be empty")
+        config.repo_url = repo_url
     if config_in.branch is not None: config.branch = config_in.branch
     if config_in.dockerfile_path is not None: config.dockerfile_path = config_in.dockerfile_path
     if config_in.context_path is not None: config.context_path = config_in.context_path
@@ -95,8 +115,20 @@ def generate_deploy_key(
 
     config = db.query(BuildConfig).filter(BuildConfig.student_id == student_id).first()
     if not config:
-        config = BuildConfig(student_id=student_id)
+        student = db.query(Student).filter(Student.id == student_id).first()
+        repo_url = _normalize_repo_url(student.git_repo_url) if student else None
+        if not repo_url:
+            raise HTTPException(status_code=400, detail="repo_url is required before generating deploy key")
+        config = BuildConfig(student_id=student_id, repo_url=repo_url)
         db.add(config)
+    else:
+        repo_url = _normalize_repo_url(config.repo_url)
+        if not repo_url:
+            student = db.query(Student).filter(Student.id == student_id).first()
+            repo_url = _normalize_repo_url(student.git_repo_url) if student else None
+            if not repo_url:
+                raise HTTPException(status_code=400, detail="repo_url is required before generating deploy key")
+            config.repo_url = repo_url
 
     if config.deploy_key_public and not payload.force:
         db.commit()
@@ -111,4 +143,11 @@ def generate_deploy_key(
 
     db.commit()
     db.refresh(config)
+    if payload.attach_to_gitea:
+        if not gitea_service.is_configured():
+            raise HTTPException(status_code=503, detail="Gitea integration not configured")
+        title = f"portal-{student_id}-{config.deploy_key_fingerprint or 'deploy-key'}"
+        ok = gitea_service.create_deploy_key(config.repo_url, title, config.deploy_key_public, read_only=True)
+        if not ok:
+            raise HTTPException(status_code=502, detail="Failed to add deploy key to Gitea")
     return config

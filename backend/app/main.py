@@ -27,6 +27,13 @@ app.add_middleware(
 app.include_router(api_router, prefix=settings.API_V1_STR)
 
 
+@app.on_event("startup")
+def sync_student_ingress_tls_on_startup() -> None:
+    from app.services.ingress_sync import sync_student_ingress_tls
+
+    sync_student_ingress_tls()
+
+
 @app.get("/health")
 def health_check():
     """Health check endpoint."""

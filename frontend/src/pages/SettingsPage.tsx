@@ -5,11 +5,13 @@ import DataGrid, { Column, Paging, Pager, HeaderFilter, SearchPanel } from 'deve
 import notify from 'devextreme/ui/notify';
 import { LoadPanel } from 'devextreme-react/load-panel';
 import { settingsApi, SystemSetting, Semester } from '../api/settings';
+import { registryApi, Registry } from '../api/registry';
 import './SettingsPage.css';
 
 const SettingsPage: React.FC = () => {
     const [settings, setSettings] = useState<Partial<SystemSetting>>({});
     const [semesters, setSemesters] = useState<Semester[]>([]);
+    const [registries, setRegistries] = useState<Registry[]>([]);
     const [loading, setLoading] = useState(true);
 
     React.useEffect(() => {
@@ -19,12 +21,21 @@ const SettingsPage: React.FC = () => {
     const loadData = async () => {
         try {
             setLoading(true);
-            const [settingsData, semestersData] = await Promise.all([
+            const [settingsResult, semestersResult, registriesResult] = await Promise.allSettled([
                 settingsApi.getSettings(),
-                settingsApi.getSemesters()
+                settingsApi.getSemesters(),
+                registryApi.list()
             ]);
-            setSettings(settingsData);
-            setSemesters(semestersData);
+
+            if (settingsResult.status === 'fulfilled') {
+                setSettings(settingsResult.value);
+            }
+            if (semestersResult.status === 'fulfilled') {
+                setSemesters(semestersResult.value);
+            }
+            if (registriesResult.status === 'fulfilled') {
+                setRegistries(registriesResult.value);
+            }
         } catch (error) {
             console.error("Failed to load settings data", error);
         } finally {
@@ -128,8 +139,24 @@ const SettingsPage: React.FC = () => {
                                     <Label text="默认镜像仓库模板" />
                                     <div className="field-hint">支持变量: {'{{registry}}'}, {'{{student_code}}'}</div>
                                 </FormItem>
-                                <FormItem dataField="default_registry_id" editorType="dxNumberBox" editorOptions={{ stylingMode: 'filled' }}>
-                                    <Label text="默认 Registry ID" />
+                                <FormItem
+                                    dataField="default_registry_id"
+                                    editorType="dxSelectBox"
+                                    editorOptions={{
+                                        items: [
+                                            { id: null, label: '未设置' },
+                                            ...registries.map((reg) => ({
+                                                id: reg.id,
+                                                label: `${reg.name} (${reg.url})`
+                                            }))
+                                        ],
+                                        displayExpr: 'label',
+                                        valueExpr: 'id',
+                                        searchEnabled: true,
+                                        stylingMode: 'filled'
+                                    }}
+                                >
+                                    <Label text="?? Registry" />
                                 </FormItem>
                                 <GroupItem>
                                     <div className="settings-actions">

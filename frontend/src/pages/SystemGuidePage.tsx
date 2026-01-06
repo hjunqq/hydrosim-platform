@@ -7,7 +7,9 @@ DB_PORT=5432
 DB_NAME=student_12345
 DB_USER=student_user
 DB_PASS=student_pass
-PORT=8080`
+PORT=8080
+DATA_DIR=/data
+DB_FILE=/data/app.db`
   const minioBlock = `MINIO_ENDPOINT=minio.infra.svc.cluster.local:9000
 MINIO_ACCESS_KEY=
 MINIO_SECRET_KEY=

@@ -188,6 +188,45 @@ def _ensure_registry_secret(namespace: str, secret_name: str, registry: Registry
 
 
 class BuildOrchestrator:
+    def resolve_image_for_build(
+        self,
+        db: Session,
+        build: Build,
+        build_config: Optional[BuildConfig] = None,
+        student: Optional[Student] = None,
+    ) -> str:
+        if not build:
+            raise ValueError("Build not found")
+        if not build.image_tag:
+            raise ValueError("Build image tag is missing")
+
+        if build_config is None:
+            build_config = (
+                db.query(BuildConfig)
+                .filter(BuildConfig.student_id == build.student_id)
+                .first()
+            )
+        if build_config is None:
+            raise ValueError("Build config not found for student")
+
+        if student is None:
+            student = db.query(Student).filter(Student.id == build.student_id).first()
+        if student is None:
+            raise ValueError("Student not found")
+
+        sys_settings = get_or_create_settings(db)
+        registry = _resolve_registry(db, build_config, sys_settings)
+
+        image_repo = build_config.image_repo or _render_image_repo(
+            sys_settings.default_image_repo_template,
+            registry,
+            student,
+        )
+        if not image_repo:
+            raise ValueError("Image repository is not configured")
+
+        return f"{image_repo}:{build.image_tag}"
+
     def trigger_build(
         self,
         db: Session,
@@ -196,14 +235,26 @@ class BuildOrchestrator:
         branch: Optional[str] = None,
     ) -> Build:
         build_config = db.query(BuildConfig).filter(BuildConfig.student_id == student_id).first()
-        if not build_config:
-            raise ValueError("Build config not found for student")
-        if not build_config.repo_url:
-            raise ValueError("repo_url is required for builds")
-
         student = db.query(Student).filter(Student.id == student_id).first()
         if not student:
             raise ValueError("Student not found")
+
+        if not build_config:
+            repo_url = (student.git_repo_url or "").strip()
+            if not repo_url:
+                raise ValueError("Build config not found for student")
+            build_config = BuildConfig(student_id=student_id, repo_url=repo_url)
+            db.add(build_config)
+            db.commit()
+            db.refresh(build_config)
+        if not build_config.repo_url:
+            repo_url = (student.git_repo_url or "").strip()
+            if repo_url:
+                build_config.repo_url = repo_url
+                db.commit()
+                db.refresh(build_config)
+            else:
+                raise ValueError("repo_url is required for builds")
 
         if not branch:
             branch = build_config.branch
@@ -416,6 +467,15 @@ class BuildOrchestrator:
             except Exception:
                 continue
         return "\n".join(lines).strip() or None
+
+    def get_live_logs(self, db: Session, build: Build) -> Optional[str]:
+        if not build or not build.job_name:
+            return None
+        if not _init_k8s_clients():
+            return None
+        sys_settings = get_or_create_settings(db)
+        namespace = sys_settings.build_namespace or settings.K8S_NAMESPACE
+        return self._collect_job_logs(namespace, build.job_name)
 
     def _auto_deploy_if_needed(self, db: Session, build: Build) -> None:
         if build.status != BuildStatus.success:

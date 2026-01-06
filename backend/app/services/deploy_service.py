@@ -6,6 +6,7 @@ from kubernetes.client.rest import ApiException
 
 from app import models
 from app.core.k8s_resources import generate_resources
+from app.core.config import settings as app_settings
 from app.core.naming import student_resource_name
 from app.models.deployment import DeploymentStatus
 from app.services.system_settings import get_or_create_settings, get_student_domain_parts
@@ -60,6 +61,18 @@ def deploy_student_resources(
     logger.info(f"Starting deployment for {student.student_code} in {namespace}, image={image}")
 
     try:
+        resources = generate_resources(
+            student_code=student.student_code,
+            image=image,
+            namespace=namespace,
+            domain_suffix=domain_suffix,
+            host_prefix=host_prefix,
+            pvc_enabled=app_settings.STUDENT_PVC_ENABLED,
+            pvc_size=app_settings.STUDENT_PVC_SIZE,
+            pvc_storage_class=app_settings.STUDENT_PVC_STORAGE_CLASS,
+            pvc_mount_path=app_settings.STUDENT_PVC_MOUNT_PATH,
+            tls_secret_name=app_settings.STUDENT_TLS_SECRET_NAME,
+        )
         exists = False
         try:
             apps_v1.read_namespaced_deployment(name=deployment_name, namespace=namespace)
@@ -67,20 +80,21 @@ def deploy_student_resources(
         except ApiException as e:
             if e.status != 404:
                 raise
+        pvc = resources.get("pvc")
+        if pvc is not None:
+            try:
+                core_v1.create_namespaced_persistent_volume_claim(
+                    namespace=namespace,
+                    body=pvc,
+                )
+            except ApiException as e:
+                if e.status != 409:
+                    raise
 
         if exists:
             patch_body = {
                 "spec": {
-                    "template": {
-                        "spec": {
-                            "containers": [
-                                {
-                                    "name": "app",
-                                    "image": image,
-                                }
-                            ]
-                        }
-                    }
+                    "template": resources["deployment"].spec.template
                 }
             }
             apps_v1.patch_namespaced_deployment(
@@ -90,13 +104,6 @@ def deploy_student_resources(
             )
             result_status = "updated"
         else:
-            resources = generate_resources(
-                student_code=student.student_code,
-                image=image,
-                namespace=namespace,
-                domain_suffix=domain_suffix,
-                host_prefix=host_prefix,
-            )
             apps_v1.create_namespaced_deployment(
                 namespace=namespace,
                 body=resources["deployment"],
@@ -109,15 +116,30 @@ def deploy_student_resources(
             except ApiException as e:
                 if e.status != 409:
                     raise
-            try:
+            result_status = "created"
+
+        # Ensure ingress is updated with latest TLS/annotations
+        try:
+            networking_v1.read_namespaced_ingress(name=deployment_name, namespace=namespace)
+            ingress_patch = {
+                "metadata": {
+                    "annotations": resources["ingress"].metadata.annotations
+                },
+                "spec": resources["ingress"].spec,
+            }
+            networking_v1.patch_namespaced_ingress(
+                name=deployment_name,
+                namespace=namespace,
+                body=ingress_patch,
+            )
+        except ApiException as e:
+            if e.status == 404:
                 networking_v1.create_namespaced_ingress(
                     namespace=namespace,
                     body=resources["ingress"],
                 )
-            except ApiException as e:
-                if e.status != 409:
-                    raise
-            result_status = "created"
+            else:
+                raise
 
         deployment_record.status = DeploymentStatus.running
         deployment_record.message = f"Project {deployment_name} successfully {result_status}"

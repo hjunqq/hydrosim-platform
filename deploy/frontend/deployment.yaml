@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: portal-frontend
-          image: registry.hydrosim.cn/hydrosim-portal-frontend:1.0
+          image: registry.hydrosim.cn/hydrosim-portal-frontend:1.1.0
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 80

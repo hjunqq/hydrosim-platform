@@ -12,6 +12,16 @@ export interface DeployResponse {
     url?: string
 }
 
+export interface DeployBuildRequest {
+    build_id?: number
+    project_type?: 'gd' | 'cd'
+}
+
+export interface DeployBuildResponse extends DeployResponse {
+    build_id?: number
+    image?: string
+}
+
 export interface DeploymentStatus {
     status: 'not_deployed' | 'deploying' | 'running' | 'error' | 'stopped'
     detail: string
@@ -37,6 +47,12 @@ export const deploymentsApi = {
      */
     triggerDeploy(studentCode: string, data: DeployRequest) {
         return request.post<DeployResponse>(`/api/v1/deploy/${studentCode}/`, data)
+    },
+    /**
+     * Deploy the latest successful build (or a specified build).
+     */
+    deployFromBuild(studentCode: string, data: DeployBuildRequest) {
+        return request.post<DeployBuildResponse>(`/api/v1/deploy/${studentCode}/build/`, data)
     },
 
     /**

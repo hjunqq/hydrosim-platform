@@ -170,10 +170,11 @@ def create_git_clone_script(
     git_host: Optional[str] = None,
     git_port: Optional[int] = None,
 ) -> str:
-    if not git_host:
+    use_ssh = git_url.startswith("git@") or git_url.startswith("ssh://")
+    if use_ssh and not git_host:
         git_host, git_port = extract_git_host_and_port(git_url)
     lines = ["set -e"]
-    if git_host:
+    if use_ssh and git_host:
         lines.extend([
             "mkdir -p /root/.ssh",
             "cp /etc/ssh-key/id_rsa /root/.ssh/id_rsa",
@@ -186,8 +187,18 @@ def create_git_clone_script(
     lines.append(f"cd {repo_dir}")
 
     if commit_sha and commit_sha != "latest":
-        lines.append(f"git checkout {commit_sha}")
+        commit_ref = commit_sha.replace('"', '\\"')
+        lines.append(f'git checkout "{commit_ref}"')
     elif branch:
-        lines.append(f"git checkout {branch}")
+        branch_name = branch.replace('"', '\\"')
+        lines.extend([
+            f'if git show-ref --verify --quiet "refs/heads/{branch_name}"; then',
+            f'  git checkout "{branch_name}"',
+            f'elif git show-ref --verify --quiet "refs/remotes/origin/{branch_name}"; then',
+            f'  git checkout -b "{branch_name}" "origin/{branch_name}"',
+            "else",
+            f'  echo "Branch {branch_name} not found, using default"',
+            "fi",
+        ])
 
     return "\n".join(lines)

@@ -5,15 +5,22 @@ import { Popup } from 'devextreme-react/popup'
 import Form, { Item as FormItem, Label, RequiredRule } from 'devextreme-react/form'
 import Button from 'devextreme-react/button'
 import notify from 'devextreme/ui/notify'
+import { confirm } from 'devextreme/ui/dialog'
 
 import { studentsApi, Student } from '../api/students'
 import { deploymentsApi } from '../api/deployments'
+import { buildConfigsApi } from '../api/buildConfigs'
+import { buildsApi } from '../api/builds'
 import DeploymentStatusModal from '../components/DeploymentStatusModal'
+import BuildConfigModal from '../components/BuildConfigModal'
+import BuildHistory from '../components/BuildHistory'
+import BuildProgress from '../components/BuildProgress'
 
 const StudentsPage = () => {
     const navigate = useNavigate()
     const [searchParams] = useSearchParams()
     const [students, setStudents] = useState<Student[]>([])
+    const popupContainer = typeof document === 'undefined' ? undefined : document.body
 
     // Filters
     const [searchText, setSearchText] = useState('')
@@ -24,7 +31,11 @@ const StudentsPage = () => {
     const [isCreatePopupVisible, setIsCreatePopupVisible] = useState(false)
     const [isDeployConfigVisible, setIsDeployConfigVisible] = useState(false)
     const [isDeployStatusVisible, setIsDeployStatusVisible] = useState(false)
+    const [isBuildConfigVisible, setIsBuildConfigVisible] = useState(false)
     const [selectedStudent, setSelectedStudent] = useState<Student | null>(null)
+    const [buildPopupMode, setBuildPopupMode] = useState<'history' | 'progress' | null>(null)
+    const [buildPopupStudent, setBuildPopupStudent] = useState<Student | null>(null)
+    const [buildPopupBuildId, setBuildPopupBuildId] = useState<number | null>(null)
 
     // Forms
     const [studentForm, setStudentForm] = useState({
@@ -32,7 +43,10 @@ const StudentsPage = () => {
         name: '',
         project_type: 'gd',
         git_repo_url: '',
-        expected_image_name: ''
+        expected_image_name: '',
+        create_build_config: true,
+        generate_deploy_key: true,
+        trigger_build: true
     })
     const [deployForm, setDeployForm] = useState({
         image: '',
@@ -60,18 +74,75 @@ const StudentsPage = () => {
     // --- Actions ---
     const handleCreateStudent = async (e: React.FormEvent) => {
         e.preventDefault()
+        const {
+            create_build_config,
+            generate_deploy_key,
+            trigger_build,
+            ...payload
+        } = studentForm
+
         try {
-            await studentsApi.create({
-                ...studentForm,
+            const created = await studentsApi.create({
+                ...payload,
                 project_type: studentForm.project_type as 'gd' | 'cd'
             })
-            notify('学生项目创建成功', 'success', 2000)
+
+            if (create_build_config && studentForm.git_repo_url) {
+                try {
+                    await buildConfigsApi.updateConfig(created.id, {
+                        repo_url: studentForm.git_repo_url,
+                        branch: 'main',
+                        dockerfile_path: 'Dockerfile',
+                        context_path: '.',
+                        auto_build: true,
+                        auto_deploy: true
+                    })
+                } catch (cfgErr: any) {
+                    notify(cfgErr.response?.data?.detail || '????????', 'warning', 2000)
+                }
+            } else if (create_build_config && !studentForm.git_repo_url) {
+                notify('???????????????', 'warning', 3000)
+            }
+
+            if (generate_deploy_key) {
+                if (!studentForm.git_repo_url) {
+                    notify('??????????? Deploy Key', 'warning', 3000)
+                } else {
+                    try {
+                        await buildConfigsApi.generateDeployKey(created.id, false, true)
+                    } catch (keyErr: any) {
+                        notify(keyErr.response?.data?.detail || 'Deploy Key ????', 'warning', 3000)
+                    }
+                }
+            }
+
+            if (trigger_build) {
+                try {
+                    const build = await buildsApi.triggerBuild(created.id)
+                    setBuildPopupStudent(created)
+                    setBuildPopupBuildId(build.id)
+                    setBuildPopupMode('progress')
+                    notify('???????', 'success', 2000)
+                } catch (buildErr: any) {
+                    await handleBuildError(buildErr, created)
+                }
+            }
+
+            notify('????????', 'success', 2000)
             setIsCreatePopupVisible(false)
             loadData()
-            loadData()
-            setStudentForm({ student_code: '', name: '', project_type: 'gd', git_repo_url: '', expected_image_name: '' })
+            setStudentForm({
+                student_code: '',
+                name: '',
+                project_type: 'gd',
+                git_repo_url: '',
+                expected_image_name: '',
+                create_build_config: true,
+                generate_deploy_key: true,
+                trigger_build: true
+            })
         } catch (err: any) {
-            notify(err.response?.data?.detail || '创建失败', 'error', 3000)
+            notify(err.response?.data?.detail || '????', 'error', 3000)
         }
     }
 
@@ -98,6 +169,64 @@ const StudentsPage = () => {
             project_type: student.project_type
         })
         setIsDeployConfigVisible(true)
+    }
+
+    const openBuildConfigPopup = (student: Student) => {
+        setSelectedStudent(student)
+        setIsBuildConfigVisible(true)
+    }
+
+    const openBuildHistoryPopup = (student: Student) => {
+        setBuildPopupStudent(student)
+        setBuildPopupBuildId(null)
+        setBuildPopupMode('history')
+    }
+
+    const getErrorDetail = (err: any) => {
+        const detail = err?.response?.data?.detail
+        if (!detail) return ''
+        return typeof detail === 'string' ? detail : String(detail)
+    }
+
+    const handleBuildError = async (err: any, student: Student) => {
+        const detail = getErrorDetail(err)
+        if (detail.includes('Image repository is not configured')) {
+            const ok = await confirm('镜像仓库未配置，是否打开构建配置？', '构建失败')
+            if (ok) {
+                openBuildConfigPopup(student)
+            } else {
+                notify('可在系统设置配置默认 Registry。', 'info', 3000)
+            }
+            return
+        }
+        notify(detail || '构建失败', 'error', 3000)
+    }
+
+    const handleTriggerBuild = async (student: Student) => {
+        try {
+            const build = await buildsApi.triggerBuild(student.id)
+            // ????????????????
+            setBuildPopupStudent(student)
+            setBuildPopupBuildId(build.id)
+            setBuildPopupMode('progress')
+            notify('???????', 'success', 2000)
+        } catch (err: any) {
+            await handleBuildError(err, student)
+        }
+    }
+
+    const handleDeployLatestBuild = async (student: Student) => {
+        try {
+            await deploymentsApi.deployFromBuild(student.student_code, {
+                project_type: student.project_type
+            })
+            setSelectedStudent(student)
+            setIsDeployStatusVisible(true)
+            notify('部署任务已提交', 'success', 2000)
+            loadData()
+        } catch (err: any) {
+            notify(err.response?.data?.detail || '部署失败', 'error', 3000)
+        }
     }
 
     // --- Helpers ---
@@ -143,6 +272,12 @@ const StudentsPage = () => {
         return matchesSearch && matchesType && matchesStatus
     })
 
+    const closeBuildPopup = () => {
+        setBuildPopupMode(null)
+        setBuildPopupBuildId(null)
+        setBuildPopupStudent(null)
+    }
+
     const handleStudentFormChange = (e: any) => {
         setStudentForm(prev => ({ ...prev, [e.dataField]: e.value }))
     }
@@ -155,8 +290,20 @@ const StudentsPage = () => {
         <>
             {/* Top Bar */}
             <div className="top-bar">
-                <h1 className="page-title">学生项目列表</h1>
-                <div style={{ fontSize: 13, color: 'var(--text-3)' }}>共 {students.length} 个项目</div>
+                <div>
+                    <h1 className="page-title">学生项目列表</h1>
+                    <div style={{ fontSize: 13, color: 'var(--text-3)' }}>共 {students.length} 个项目</div>
+                </div>
+                <div className="panel-actions">
+                    <Button
+                        text="新建项目"
+                        icon="add"
+                        type="default"
+                        stylingMode="contained"
+                        onClick={() => setIsCreatePopupVisible(true)}
+                        height={36}
+                    />
+                </div>
             </div>
 
             {/* Content */}
@@ -166,11 +313,15 @@ const StudentsPage = () => {
                         dataSource={students}
                         showBorders={false}
                         focusedRowEnabled={true}
-                        columnAutoWidth={true}
+                        columnAutoWidth={false}
+                        columnMinWidth={100}
                         allowColumnResizing={true}
                         columnResizingMode="widget"
                         keyExpr="id"
                         rowAlternationEnabled={true}
+                        columnHidingEnabled={true}
+                        width="100%"
+                        wordWrapEnabled={true}
                     >
                         <SearchPanel visible={true} width={300} placeholder="搜索项目..." />
                         <FilterRow visible={true} />
@@ -225,7 +376,7 @@ const StudentsPage = () => {
                         <Column
                             dataField="running_image"
                             caption="当前运行镜像"
-                            minWidth={250}
+                            minWidth={260}
                             cellRender={(data) => (
                                 <div style={{ fontSize: 12, color: '#666', lineHeight: '1.4' }}>
                                     {data.value ? data.value.split('\n').map((img: string, idx: number) => (
@@ -238,7 +389,7 @@ const StudentsPage = () => {
                         <Column
                             dataField="latest_deploy_status"
                             caption="状态"
-                            width={100}
+                            width={160}
                             cellRender={(cellData) => {
                                 const status = cellData.value;
                                 let badgeClass = 'st-default';
@@ -276,14 +427,15 @@ const StudentsPage = () => {
                         />
                         <Column
                             caption="操作"
-                            width={180}
+                            width={520}
                             fixed={true}
                             fixedPosition="right"
                             alignment="center"
                             cellRender={(data) => (
-                                <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
+                                <div className="table-actions">
                                     <Button
                                         text="监控"
+                                        icon="chart"
                                         type="normal"
                                         stylingMode="outlined"
                                         onClick={(e) => {
@@ -295,9 +447,46 @@ const StudentsPage = () => {
                                     />
                                     <Button
                                         text="部署"
+                                        icon="upload"
                                         type="default"
                                         stylingMode="outlined"
                                         onClick={() => openDeployPopup(data.data)}
+                                        height={24}
+                                        style={{ fontSize: 12 }}
+                                    />
+                                    <Button
+                                        text="构建"
+                                        icon="refresh"
+                                        type="normal"
+                                        stylingMode="outlined"
+                                        onClick={() => handleTriggerBuild(data.data)}
+                                        height={24}
+                                        style={{ fontSize: 12 }}
+                                    />
+                                    <Button
+                                        text="构建记录"
+                                        icon="event"
+                                        type="normal"
+                                        stylingMode="outlined"
+                                        onClick={() => openBuildHistoryPopup(data.data)}
+                                        height={24}
+                                        style={{ fontSize: 12 }}
+                                    />
+                                    <Button
+                                        text="部署最新"
+                                        icon="arrowup"
+                                        type="normal"
+                                        stylingMode="outlined"
+                                        onClick={() => handleDeployLatestBuild(data.data)}
+                                        height={24}
+                                        style={{ fontSize: 12 }}
+                                    />
+                                    <Button
+                                        text="配置"
+                                        icon="optionsgear"
+                                        type="normal"
+                                        stylingMode="outlined"
+                                        onClick={() => openBuildConfigPopup(data.data)}
                                         height={24}
                                         style={{ fontSize: 12 }}
                                     />
@@ -315,36 +504,57 @@ const StudentsPage = () => {
                 title="新建学生项目"
                 showTitle={true}
                 dragEnabled={false}
+                position={{ my: 'center', at: 'center', of: window }}
                 width={500}
                 height={450}
             >
                 <form onSubmit={handleCreateStudent}>
                     <Form formData={studentForm} onFieldDataChanged={handleStudentFormChange} labelLocation="top">
                         <FormItem dataField="student_code" editorType="dxTextBox">
-                            <Label text="学号 (Student ID)" />
-                            <RequiredRule message="请输入学号" />
+                            <Label text="?? (Student ID)" />
+                            <RequiredRule message="?????" />
                         </FormItem>
                         <FormItem dataField="name" editorType="dxTextBox">
-                            <Label text="姓名 (Name)" />
-                            <RequiredRule message="请输入姓名" />
+                            <Label text="?? (Name)" />
+                            <RequiredRule message="?????" />
                         </FormItem>
                         <FormItem
                             dataField="project_type"
                             editorType="dxSelectBox"
                             editorOptions={{
-                                items: [{ id: 'gd', text: '毕业设计 (Graduation Design)' }, { id: 'cd', text: '课程设计 (Course Design)' }],
+                                items: [
+                                    { id: 'gd', text: '???? (Graduation Design)' },
+                                    { id: 'cd', text: '???? (Course Design)' }
+                                ],
                                 displayExpr: 'text',
                                 valueExpr: 'id'
                             }}
                         >
-                            <Label text="项目类型" />
+                            <Label text="????" />
                             <RequiredRule />
                         </FormItem>
                         <FormItem dataField="git_repo_url" editorType="dxTextBox">
-                            <Label text="Git 仓库地址 (可选)" />
+                            <Label text="Git ???? (??)" />
                         </FormItem>
                         <FormItem dataField="expected_image_name" editorType="dxTextBox">
-                            <Label text="预期镜像关键词 (可选)" />
+                            <Label text="??????? (??)" />
+                        </FormItem>
+                        <FormItem itemType="group" caption="????">
+                            <FormItem
+                                dataField="create_build_config"
+                                editorType="dxCheckBox"
+                                editorOptions={{ text: '??????' }}
+                            />
+                            <FormItem
+                                dataField="generate_deploy_key"
+                                editorType="dxCheckBox"
+                                editorOptions={{ text: '?? Deploy Key' }}
+                            />
+                            <FormItem
+                                dataField="trigger_build"
+                                editorType="dxCheckBox"
+                                editorOptions={{ text: '???????' }}
+                            />
                         </FormItem>
                     </Form>
                     <div style={{ marginTop: 24, display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
@@ -361,6 +571,7 @@ const StudentsPage = () => {
                 title="部署项目"
                 showTitle={true}
                 dragEnabled={false}
+                position={{ my: 'center', at: 'center', of: window }}
                 width={400}
                 height="auto"
             >
@@ -408,6 +619,54 @@ const StudentsPage = () => {
                 studentName={selectedStudent?.name}
                 domain={selectedStudent?.domain}
             />
+
+            <BuildConfigModal
+                visible={isBuildConfigVisible}
+                onClose={() => setIsBuildConfigVisible(false)}
+                studentId={selectedStudent?.id || 0}
+                onSaved={loadData}
+            />
+
+            <Popup
+                visible={buildPopupMode === 'history'}
+                onHiding={closeBuildPopup}
+                title={`构建记录 - ${buildPopupStudent?.name || ''}`}
+                showTitle={true}
+                dragEnabled={false}
+                shading={true}
+                showCloseButton={true}
+                container={popupContainer}
+                position="center"
+                width={900}
+                height={520}
+            >
+                {buildPopupStudent ? (
+                    <div style={{ height: '100%' }}>
+                        <BuildHistory studentId={buildPopupStudent.id} />
+                    </div>
+                ) : null}
+            </Popup>
+
+            <Popup
+                visible={buildPopupMode === 'progress'}
+                onHiding={closeBuildPopup}
+                title={`构建进度 - ${buildPopupStudent?.name || ''}`}
+                showTitle={true}
+                dragEnabled={false}
+                shading={true}
+                showCloseButton={true}
+                container={popupContainer}
+                position="center"
+                width={600}
+                height="auto"
+            >
+                {buildPopupStudent ? (
+                    <BuildProgress
+                        studentId={buildPopupStudent.id}
+                        buildId={buildPopupBuildId}
+                    />
+                ) : null}
+            </Popup>
         </>
     )
 }
