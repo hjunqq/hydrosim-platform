@@ -59,7 +59,7 @@ export const deploymentsApi = {
      * Get the realtime status of a deployment.
      */
     getStatus(studentCode: string, projectType: string) {
-        return request.get<DeploymentStatus>(`/api/v1/deploy/${studentCode}/`, {
+        return request.get<DeploymentStatus>(`/api/v1/deploy/${studentCode}`, {
             params: { project_type: projectType }
         })
     }

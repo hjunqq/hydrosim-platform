@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import DataGrid, { Column, FilterRow, Paging, SearchPanel } from 'devextreme-react/data-grid'
 import Button from 'devextreme-react/button'
+import CheckBox from 'devextreme-react/check-box'
 import notify from 'devextreme/ui/notify'
 import { confirm } from 'devextreme/ui/dialog'
 import request from '../api/request'
@@ -14,34 +15,43 @@ interface K8sResource {
     replicas: string
     status: string
     created_at: string
+    row_id: string
 }
 
 const DeploymentsPage = () => {
     const [resources, setResources] = useState<K8sResource[]>([])
     const [loading, setLoading] = useState(true)
+    const [autoRefresh, setAutoRefresh] = useState(false)
 
     const loadData = async () => {
         try {
             setLoading(true)
             const data = await request.get<K8sResource[]>('/api/v1/deploy/resources/list')
-            setResources(data as unknown as K8sResource[])
+            const normalized = (data as unknown as K8sResource[]).map((item) => ({
+                ...item,
+                row_id: `${item.namespace}:${item.deployment_name}`
+            }))
+            setResources(normalized)
         } catch (err) {
-            notify('Failed to load cluster resources', 'error', 3000)
+            notify('加载集群资源失败', 'error', 3000)
         } finally {
             setLoading(false)
         }
     }
 
     const handleDelete = async (data: K8sResource) => {
-        const result = await confirm(`确定要删除 ${data.student_code} 的部署吗? 此操作将移除所有相关 Pod 和服务。`, '确认删除')
+        const result = await confirm(
+            `确定要删除 ${data.student_code} 的部署吗？此操作将移除所有相关 Pod 和服务。`,
+            '确认删除'
+        )
         if (result) {
             try {
-                // DELETE /api/v1/deploy/{student_code}?project_type={project_type}
-                await request.delete(`/api/v1/deploy/${data.student_code}`, {
+                // DELETE /api/v1/deploy/{student_code}/?project_type={project_type}
+                await request.delete(`/api/v1/deploy/${data.student_code}/`, {
                     params: { project_type: data.project_type }
                 })
                 notify('部署已成功删除', 'success', 2000)
-                loadData() // Refresh
+                loadData()
             } catch (err) {
                 notify('删除失败: ' + err, 'error', 3000)
             }
@@ -50,9 +60,13 @@ const DeploymentsPage = () => {
 
     useEffect(() => {
         loadData()
-        const timer = setInterval(loadData, 5000) // Auto refresh
-        return () => clearInterval(timer)
     }, [])
+
+    useEffect(() => {
+        if (!autoRefresh) return
+        const timer = setInterval(loadData, 15000)
+        return () => clearInterval(timer)
+    }, [autoRefresh])
 
     const statusCellRender = (cellData: any) => {
         const isHealthy = cellData.value === 'Running'
@@ -66,7 +80,6 @@ const DeploymentsPage = () => {
 
     return (
         <>
-            {/* Top Bar - consistent with other pages */}
             <div className="top-bar">
                 <div>
                     <h1 className="page-title">部署记录 (Deployments)</h1>
@@ -74,6 +87,11 @@ const DeploymentsPage = () => {
                 </div>
                 <div className="panel-actions">
                     <Button text="刷新列表" icon="refresh" stylingMode="contained" onClick={loadData} height={36} />
+                    <CheckBox
+                        text="自动刷新"
+                        value={autoRefresh}
+                        onValueChanged={(e) => setAutoRefresh(Boolean(e.value))}
+                    />
                 </div>
             </div>
 
@@ -93,32 +111,33 @@ const DeploymentsPage = () => {
                             rowAlternationEnabled={true}
                             columnAutoWidth={true}
                             noDataText="暂无部署数据"
+                            keyExpr="row_id"
                         >
                             <SearchPanel visible={true} width={300} placeholder="搜索部署..." />
                             <FilterRow visible={true} />
                             <Paging defaultPageSize={20} />
 
-                    <Column dataField="student_code" caption="学号 (Student Code)" sortOrder="asc" />
-                    <Column dataField="deployment_name" caption="部署名称 (Deployment)" />
-                    <Column dataField="namespace" caption="命名空间 (Namespace)" />
-                    <Column dataField="image" caption="镜像 (Image)" />
-                    <Column dataField="replicas" caption="副本数 (Ready/Target)" alignment="center" />
-                    <Column dataField="status" caption="健康状态" cellRender={statusCellRender} alignment="center" />
-                    <Column dataField="created_at" caption="创建时间" dataType="datetime" format="yyyy-MM-dd HH:mm:ss" />
-                    <Column
-                        caption="操作"
-                        width={80}
-                        alignment="center"
-                        cellRender={(cellData) => (
-                            <Button
-                                icon="trash"
-                                type="danger"
-                                stylingMode="text"
-                                onClick={() => handleDelete(cellData.data)}
-                                hint="删除部署"
+                            <Column dataField="student_code" caption="学号 (Student Code)" sortOrder="asc" />
+                            <Column dataField="deployment_name" caption="部署名称 (Deployment)" />
+                            <Column dataField="namespace" caption="命名空间 (Namespace)" />
+                            <Column dataField="image" caption="镜像 (Image)" />
+                            <Column dataField="replicas" caption="副本数 (Ready/Target)" alignment="center" />
+                            <Column dataField="status" caption="健康状态" cellRender={statusCellRender} alignment="center" />
+                            <Column dataField="created_at" caption="创建时间" dataType="datetime" format="yyyy-MM-dd HH:mm:ss" />
+                            <Column
+                                caption="操作"
+                                width={80}
+                                alignment="center"
+                                cellRender={(cellData) => (
+                                    <Button
+                                        icon="trash"
+                                        type="danger"
+                                        stylingMode="text"
+                                        onClick={() => handleDelete(cellData.data)}
+                                        hint="删除部署"
+                                    />
+                                )}
                             />
-                        )}
-                    />
                         </DataGrid>
                     )}
                 </div>

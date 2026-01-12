@@ -107,7 +107,7 @@ const StudentDetailPage = () => {
         if (!student) return
         try {
             await buildsApi.triggerBuild(student.id)
-            notify('???????', 'success', 2000)
+            notify('构建任务已提交', 'success', 2000)
         } catch (err: any) {
             await handleBuildError(err)
         }
@@ -136,15 +136,15 @@ const StudentDetailPage = () => {
     const handleBuildError = async (err: any) => {
         const detail = getErrorDetail(err)
         if (detail.includes('Image repository is not configured')) {
-            const ok = await confirm('?????????????????', '????')
+            const ok = await confirm('镜像仓库未配置，是否打开构建配置？', '构建失败')
             if (ok) {
                 setIsConfigPopupVisible(true)
             } else {
-                notify('?????????? Registry?', 'info', 3000)
+                notify('可在系统设置配置默认 Registry。', 'info', 3000)
             }
             return
         }
-        notify(detail || '????', 'error', 3000)
+        notify(detail || '构建失败', 'error', 3000)
     }
 
     const handleDeployFormChange = (e: any) => {

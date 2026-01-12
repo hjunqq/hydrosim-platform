@@ -28,5 +28,5 @@ class Build(Base):
     duration = Column(Integer, nullable=True) # Duration in seconds
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
-    student = relationship("Student", backref="builds")
+    student = relationship("Student", back_populates="builds")
     deployments = relationship("Deployment", back_populates="build")

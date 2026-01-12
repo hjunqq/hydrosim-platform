@@ -156,7 +156,7 @@ const SettingsPage: React.FC = () => {
                                         stylingMode: 'filled'
                                     }}
                                 >
-                                    <Label text="?? Registry" />
+                                    <Label text="默认 Registry" />
                                 </FormItem>
                                 <GroupItem>
                                     <div className="settings-actions">

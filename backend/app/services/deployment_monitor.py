@@ -174,8 +174,9 @@ def get_all_deployment_statuses(student_namespaces: list = None) -> Dict[str, Di
             
             pods = core_v1.list_namespaced_pod(namespace=ns)
             for pod in pods.items:
-                app_label = pod.metadata.labels.get("app")  # e.g. student-u2023001
-                student_label = pod.metadata.labels.get("student")
+                labels = pod.metadata.labels or {}
+                app_label = labels.get("app")  # e.g. student-u2023001
+                student_label = labels.get("student")
                 if student_label:
                     student_code = student_label
                 elif app_label and app_label.startswith("student-"):

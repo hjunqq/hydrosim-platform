@@ -98,20 +98,20 @@ const StudentsPage = () => {
                         auto_deploy: true
                     })
                 } catch (cfgErr: any) {
-                    notify(cfgErr.response?.data?.detail || '????????', 'warning', 2000)
+                    notify(cfgErr.response?.data?.detail || '构建配置保存失败', 'warning', 2000)
                 }
             } else if (create_build_config && !studentForm.git_repo_url) {
-                notify('???????????????', 'warning', 3000)
+                notify('未填写 Git 仓库，无法创建构建配置', 'warning', 3000)
             }
 
             if (generate_deploy_key) {
                 if (!studentForm.git_repo_url) {
-                    notify('??????????? Deploy Key', 'warning', 3000)
+                    notify('未填写 Git 仓库，无法生成 Deploy Key', 'warning', 3000)
                 } else {
                     try {
                         await buildConfigsApi.generateDeployKey(created.id, false, true)
                     } catch (keyErr: any) {
-                        notify(keyErr.response?.data?.detail || 'Deploy Key ????', 'warning', 3000)
+                        notify(keyErr.response?.data?.detail || 'Deploy Key 生成失败', 'warning', 3000)
                     }
                 }
             }
@@ -122,13 +122,13 @@ const StudentsPage = () => {
                     setBuildPopupStudent(created)
                     setBuildPopupBuildId(build.id)
                     setBuildPopupMode('progress')
-                    notify('???????', 'success', 2000)
+                    notify('构建任务已提交', 'success', 2000)
                 } catch (buildErr: any) {
                     await handleBuildError(buildErr, created)
                 }
             }
 
-            notify('????????', 'success', 2000)
+            notify('项目创建成功', 'success', 2000)
             setIsCreatePopupVisible(false)
             loadData()
             setStudentForm({
@@ -142,7 +142,7 @@ const StudentsPage = () => {
                 trigger_build: true
             })
         } catch (err: any) {
-            notify(err.response?.data?.detail || '????', 'error', 3000)
+            notify(err.response?.data?.detail || '创建失败', 'error', 3000)
         }
     }
 
@@ -205,11 +205,10 @@ const StudentsPage = () => {
     const handleTriggerBuild = async (student: Student) => {
         try {
             const build = await buildsApi.triggerBuild(student.id)
-            // ????????????????
             setBuildPopupStudent(student)
             setBuildPopupBuildId(build.id)
             setBuildPopupMode('progress')
-            notify('???????', 'success', 2000)
+            notify('构建任务已提交', 'success', 2000)
         } catch (err: any) {
             await handleBuildError(err, student)
         }
@@ -282,7 +281,20 @@ const StudentsPage = () => {
         setStudentForm(prev => ({ ...prev, [e.dataField]: e.value }))
     }
 
-    const handleDeployFormChange = (e: any) => {
+    const handleDeleteStudent = async (student: Student) => {
+        const displayName = student.name || student.student_code
+        const ok = await confirm(`确认删除项目 "${displayName}"？`, '删除确认')
+        if (!ok) return
+        try {
+            await studentsApi.delete(student.id)
+            notify('项目已删除', 'success', 2000)
+            loadData()
+        } catch (err: any) {
+            notify(err.response?.data?.detail || '删除失败', 'error', 3000)
+        }
+    }
+
+const handleDeployFormChange = (e: any) => {
         setDeployForm(prev => ({ ...prev, [e.dataField]: e.value }))
     }
 
@@ -427,7 +439,7 @@ const StudentsPage = () => {
                         />
                         <Column
                             caption="操作"
-                            width={520}
+                            width={600}
                             fixed={true}
                             fixedPosition="right"
                             alignment="center"
@@ -490,6 +502,15 @@ const StudentsPage = () => {
                                         height={24}
                                         style={{ fontSize: 12 }}
                                     />
+                                    <Button
+                                        text="删除"
+                                        icon="trash"
+                                        type="danger"
+                                        stylingMode="outlined"
+                                        onClick={() => handleDeleteStudent(data.data)}
+                                        height={24}
+                                        style={{ fontSize: 12 }}
+                                    />
                                 </div>
                             )}
                         />
@@ -511,49 +532,49 @@ const StudentsPage = () => {
                 <form onSubmit={handleCreateStudent}>
                     <Form formData={studentForm} onFieldDataChanged={handleStudentFormChange} labelLocation="top">
                         <FormItem dataField="student_code" editorType="dxTextBox">
-                            <Label text="?? (Student ID)" />
-                            <RequiredRule message="?????" />
+                            <Label text="学号 (Student ID)" />
+                            <RequiredRule message="学号不能为空" />
                         </FormItem>
                         <FormItem dataField="name" editorType="dxTextBox">
-                            <Label text="?? (Name)" />
-                            <RequiredRule message="?????" />
+                            <Label text="姓名 (Name)" />
+                            <RequiredRule message="姓名不能为空" />
                         </FormItem>
                         <FormItem
                             dataField="project_type"
                             editorType="dxSelectBox"
                             editorOptions={{
                                 items: [
-                                    { id: 'gd', text: '???? (Graduation Design)' },
-                                    { id: 'cd', text: '???? (Course Design)' }
+                                    { id: 'gd', text: '毕业设计 (Graduation Design)' },
+                                    { id: 'cd', text: '课程设计 (Course Design)' }
                                 ],
                                 displayExpr: 'text',
                                 valueExpr: 'id'
                             }}
                         >
-                            <Label text="????" />
+                            <Label text="项目类型" />
                             <RequiredRule />
                         </FormItem>
                         <FormItem dataField="git_repo_url" editorType="dxTextBox">
-                            <Label text="Git ???? (??)" />
+                            <Label text="Git 仓库 (可选)" />
                         </FormItem>
                         <FormItem dataField="expected_image_name" editorType="dxTextBox">
-                            <Label text="??????? (??)" />
+                            <Label text="预期镜像名 (可选)" />
                         </FormItem>
-                        <FormItem itemType="group" caption="????">
+                        <FormItem itemType="group" caption="构建与部署">
                             <FormItem
                                 dataField="create_build_config"
                                 editorType="dxCheckBox"
-                                editorOptions={{ text: '??????' }}
+                                editorOptions={{ text: '创建构建配置' }}
                             />
                             <FormItem
                                 dataField="generate_deploy_key"
                                 editorType="dxCheckBox"
-                                editorOptions={{ text: '?? Deploy Key' }}
+                                editorOptions={{ text: '生成 Deploy Key' }}
                             />
                             <FormItem
                                 dataField="trigger_build"
                                 editorType="dxCheckBox"
-                                editorOptions={{ text: '???????' }}
+                                editorOptions={{ text: '创建后触发构建' }}
                             />
                         </FormItem>
                     </Form>

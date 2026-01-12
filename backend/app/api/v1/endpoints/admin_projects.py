@@ -13,6 +13,55 @@ from app.services.system_settings import get_or_create_settings, get_student_dom
 
 router = APIRouter()
 
+def _merge_portal_status(component_statuses: dict) -> dict:
+    statuses = []
+    details = []
+    images = []
+
+    for name, info in component_statuses.items():
+        status = info.get("status", "unknown")
+        statuses.append(status)
+        detail = info.get("detail", "")
+        if detail and detail != "All services ready":
+            details.append(f"{name}: {detail}")
+        image = info.get("image", "")
+        if image:
+            for item in image.splitlines():
+                item = item.strip()
+                if item:
+                    images.append(item)
+
+    if any(status == "error" for status in statuses):
+        aggregated_status = "error"
+    elif any(status == "deploying" for status in statuses):
+        aggregated_status = "deploying"
+    elif statuses and all(status == "running" for status in statuses):
+        aggregated_status = "running"
+    elif statuses and all(status == "not_deployed" for status in statuses):
+        aggregated_status = "not_deployed"
+    else:
+        aggregated_status = "deploying"
+
+    detail_str = "; ".join(details) if details else "All services ready"
+    image_str = "\n".join(sorted(set(images))) if images else "-"
+
+    return {
+        "status": aggregated_status,
+        "detail": detail_str,
+        "image": image_str,
+    }
+
+
+def _get_portal_status() -> dict:
+    from app.services.deployment_monitor import get_status_by_selector
+
+    components = {
+        "portal-backend": get_status_by_selector("hydrosim", "app=portal-backend"),
+        "portal-frontend": get_status_by_selector("hydrosim", "app=portal-frontend"),
+    }
+    return _merge_portal_status(components)
+
+
 @router.get("/projects/", response_model=List[ProjectOut])
 def list_projects(
     db: Session = Depends(deps.get_db),
@@ -52,7 +101,7 @@ def list_projects(
             if skip == 0:
                 # Use Label Selector to find all portal components (web, api, etc)
                 # Configured to scan 'hydrosim' namespace for ALL pods (empty selector)
-                portal_status = get_status_by_selector("hydrosim", "")
+                portal_status = _get_portal_status()
                 
                 # If selector returns not_deployed and detail is "No resources", maybe try old method or just accept it? 
                 # If the user has multiple deployments, they MUST label them 'app=hydrosim-portal'.
@@ -165,7 +214,7 @@ def get_project(
         from datetime import datetime
         
         try:
-            portal_status = get_status_by_selector("hydrosim", "")
+            portal_status = _get_portal_status()
             p_status = portal_status.get("status", "unknown")
             p_image_str = portal_status.get("image", "")
             p_detail = portal_status.get("detail", "")

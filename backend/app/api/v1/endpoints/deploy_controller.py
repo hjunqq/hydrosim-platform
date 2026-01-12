@@ -316,8 +316,10 @@ def delete_deployment(
         .first()
     )
     if not student:
-        raise HTTPException(status_code=404, detail="Student not found")
-    _assert_student_access(actor, student)
+        if role != "admin":
+            raise HTTPException(status_code=404, detail="Student not found")
+    else:
+        _assert_student_access(actor, student)
         
     namespace = NAMESPACE_MAP[project_type]
     deployment_name = student_resource_name(student_code)

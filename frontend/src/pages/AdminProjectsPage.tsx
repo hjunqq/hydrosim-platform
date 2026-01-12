@@ -85,20 +85,20 @@ const AdminProjectsPage = () => {
                         auto_deploy: true
                     });
                 } catch (cfgErr: any) {
-                    notify(cfgErr.response?.data?.detail || '????????', 'warning', 2000);
+                    notify(cfgErr.response?.data?.detail || '构建配置保存失败', 'warning', 2000);
                 }
             } else if (create_build_config && !newProject.git_repo_url) {
-                notify('???????????????', 'warning', 3000);
+                notify('未填写 Git 仓库，无法创建构建配置', 'warning', 3000);
             }
 
             if (generate_deploy_key) {
                 if (!newProject.git_repo_url) {
-                    notify('??????????? Deploy Key', 'warning', 3000);
+                    notify('未填写 Git 仓库，无法生成 Deploy Key', 'warning', 3000);
                 } else {
                     try {
                         await buildConfigsApi.generateDeployKey(created.id, false, true);
                     } catch (keyErr: any) {
-                        notify(keyErr.response?.data?.detail || 'Deploy Key ????', 'warning', 3000);
+                        notify(keyErr.response?.data?.detail || 'Deploy Key 生成失败', 'warning', 3000);
                     }
                 }
             }
@@ -109,13 +109,13 @@ const AdminProjectsPage = () => {
                     setBuildProgressStudent(created as AdminProject);
                     setBuildProgressBuildId(build.id);
                     setIsBuildProgressVisible(true);
-                    notify('???????', 'success', 2000);
+                    notify('构建任务已提交', 'success', 2000);
                 } catch (buildErr: any) {
                     await handleBuildError(buildErr, created as AdminProject);
                 }
             }
 
-            notify('??????', 'success', 2000);
+            notify('项目创建成功', 'success', 2000);
             setIsCreatePopupVisible(false);
             setNewProject({
                 student_code: '',
@@ -129,7 +129,7 @@ const AdminProjectsPage = () => {
             });
             loadProjects();
         } catch (err: any) {
-            notify(err.response?.data?.detail || '????', 'error', 2000);
+            notify(err.response?.data?.detail || '创建失败', 'error', 2000);
         }
     };
 
@@ -191,7 +191,7 @@ const AdminProjectsPage = () => {
         try {
             const build = await buildsApi.triggerBuild(project.id);
             setBuildProgressBuildId(build.id);
-            notify('???????', 'success', 2000);
+            notify('构建任务已提交', 'success', 2000);
         } catch (err: any) {
             await handleBuildError(err, project);
             setIsBuildProgressVisible(false);
@@ -207,6 +207,23 @@ const AdminProjectsPage = () => {
             loadProjects();
         } catch (err: any) {
             notify(err.response?.data?.detail || '部署失败', 'error', 3000);
+        }
+    };
+
+    const handleDeleteProject = async (project: AdminProject) => {
+        if (project.id === 0) {
+            notify('系统项目不允许删除', 'warning', 2000);
+            return;
+        }
+        const displayName = project.name || project.student_code;
+        const ok = await confirm(`确认删除项目 "${displayName}"？`, '删除确认');
+        if (!ok) return;
+        try {
+            await studentsApi.delete(project.id);
+            notify('项目已删除', 'success', 2000);
+            loadProjects();
+        } catch (err: any) {
+            notify(err.response?.data?.detail || '删除失败', 'error', 3000);
         }
     };
 
@@ -395,7 +412,7 @@ const AdminProjectsPage = () => {
 
                             <Column
                                 caption="操作"
-                                width={520}
+                                width={600}
                                 fixed={true}
                                 fixedPosition="right"
                                 alignment="center"
@@ -463,9 +480,19 @@ const AdminProjectsPage = () => {
                                             height={24}
                                             style={{ fontSize: 12 }}
                                         />
+                                        <Button
+                                            text="删除"
+                                            icon="trash"
+                                            type="danger"
+                                            stylingMode="outlined"
+                                            onClick={() => handleDeleteProject(data.data)}
+                                            disabled={data.data.id === 0}
+                                            height={24}
+                                            style={{ fontSize: 12 }}
+                                        />
                                     </div>
                                 )}
-                            />
+                                />
                         </DataGrid>
                     )}
                 </div>
@@ -489,22 +516,22 @@ const AdminProjectsPage = () => {
                                 <Label text="Git 仓库地址" />
                                 <RequiredRule message="Git地址不能为空" />
                             </FormItem>
-                            
-                            <FormItem itemType="group" caption="????">
+                            
+                            <FormItem itemType="group" caption="构建与部署">
                                 <FormItem
                                     dataField="create_build_config"
                                     editorType="dxCheckBox"
-                                    editorOptions={{ text: '??????' }}
+                                    editorOptions={{ text: '创建构建配置' }}
                                 />
                                 <FormItem
                                     dataField="generate_deploy_key"
                                     editorType="dxCheckBox"
-                                    editorOptions={{ text: '?? Deploy Key' }}
+                                    editorOptions={{ text: '生成 Deploy Key' }}
                                 />
                                 <FormItem
                                     dataField="trigger_build"
                                     editorType="dxCheckBox"
-                                    editorOptions={{ text: '???????' }}
+                                    editorOptions={{ text: '创建后触发构建' }}
                                 />
                             </FormItem>
                             {/* More fields can be added here if backend supports them */}
@@ -515,7 +542,7 @@ const AdminProjectsPage = () => {
                     </form>
                 </Popup>
 
-                <Popup
+                                                <Popup
                     visible={isCreatePopupVisible}
                     onHiding={() => setIsCreatePopupVisible(false)}
                     title="新建项目"
@@ -526,53 +553,57 @@ const AdminProjectsPage = () => {
                 >
                     <form onSubmit={handleCreateSave}>
                         <Form formData={newProject} onFieldDataChanged={handleNewProjectChange}>
-                        <FormItem dataField="student_code">
-                            <Label text="?? (Student Code)" />
-                            <RequiredRule message="??????" />
-                        </FormItem>
-                        <FormItem dataField="name">
-                            <Label text="????" />
-                            <RequiredRule message="??????" />
-                        </FormItem>
-                        <FormItem
-                            dataField="project_type"
-                            editorType="dxSelectBox"
-                            editorOptions={{
-                                items: [
-                                    { id: 'gd', text: '????' },
-                                    { id: 'cd', text: '????' }
-                                ],
-                                displayExpr: 'text',
-                                valueExpr: 'id'
-                            }}
-                        >
-                            <Label text="????" />
-                            <RequiredRule />
-                        </FormItem>
-                        <FormItem dataField="git_repo_url">
-                            <Label text="Git ???? (??)" />
-                        </FormItem>
-                        <FormItem dataField="expected_image_name">
-                            <Label text="??????? (??)" />
-                        </FormItem>
-                        <FormItem itemType="group" caption="????">
+                            <FormItem dataField="student_code">
+                                <Label text="学号 (Student Code)" />
+                                <RequiredRule message="学号不能为空" />
+                            </FormItem>
+                            <FormItem dataField="name">
+                                <Label text="姓名" />
+                                <RequiredRule message="姓名不能为空" />
+                            </FormItem>
                             <FormItem
-                                dataField="create_build_config"
-                                editorType="dxCheckBox"
-                                editorOptions={{ text: '??????' }}
-                            />
-                            <FormItem
-                                dataField="generate_deploy_key"
-                                editorType="dxCheckBox"
-                                editorOptions={{ text: '?? Deploy Key' }}
-                            />
-                            <FormItem
-                                dataField="trigger_build"
-                                editorType="dxCheckBox"
-                                editorOptions={{ text: '???????' }}
-                            />
-                        </FormItem>
-                    </Form>
+                                dataField="project_type"
+                                editorType="dxSelectBox"
+                                editorOptions={{
+                                    items: [
+                                        { id: 'gd', text: '毕业设计' },
+                                        { id: 'cd', text: '课程设计' }
+                                    ],
+                                    displayExpr: 'text',
+                                    valueExpr: 'id'
+                                }}
+                            >
+                                <Label text="项目类型" />
+                                <RequiredRule />
+                            </FormItem>
+                            <FormItem dataField="git_repo_url">
+                                <Label text="Git 仓库 (可选)" />
+                            </FormItem>
+                            <FormItem dataField="expected_image_name">
+                                <Label text="预期镜像名 (可选)" />
+                            </FormItem>
+                            <FormItem itemType="group" caption="构建与部署">
+                                <FormItem
+                                    dataField="create_build_config"
+                                    editorType="dxCheckBox"
+                                    editorOptions={{ text: '创建构建配置' }}
+                                />
+                                <FormItem
+                                    dataField="generate_deploy_key"
+                                    editorType="dxCheckBox"
+                                    editorOptions={{ text: '生成 Deploy Key' }}
+                                />
+                                <FormItem
+                                    dataField="trigger_build"
+                                    editorType="dxCheckBox"
+                                    editorOptions={{ text: '创建后触发构建' }}
+                                />
+                            </FormItem>
+                        </Form>
+                        <div style={{ marginTop: 24, display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                            <Button text="取消" onClick={() => setIsCreatePopupVisible(false)} type="normal" />
+                            <Button text="创建项目" useSubmitBehavior={true} type="default" />
+                        </div>
                     </form>
                 </Popup>
 
