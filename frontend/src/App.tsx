@@ -1,5 +1,8 @@
 ﻿import { BrowserRouter, Navigate, Outlet, Route, Routes } from 'react-router-dom'
+import { QueryClientProvider } from '@tanstack/react-query'
+import { queryClient } from './config/queryClient'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
+import { ThemeProvider } from './contexts/ThemeContext'
 import MainLayout from './layouts/MainLayout'
 import DashboardPage from './pages/DashboardPage'
 import LoginPage from './pages/LoginPage'
@@ -13,6 +16,9 @@ import SystemGuidePage from './pages/SystemGuidePage'
 import ProjectStatusPage from './pages/ProjectStatusPage'
 import SettingsPage from './pages/SettingsPage'
 import ProfilePage from './pages/ProfilePage'
+import AccountsPage from './pages/AccountsPage'
+import AuditPage from './pages/AuditPage'
+import { AdminOnly, TeacherOrAdmin } from './components/RoleGuard'
 
 const RequireAuth = () => {
   const { isAuthenticated, isLoading } = useAuth()
@@ -28,16 +34,45 @@ const AppRoutes = () => {
       <Route element={<RequireAuth />}>
         <Route element={<MainLayout />}>
           <Route path="/dashboard" element={<DashboardPage />} />
-          <Route path="/students" element={<StudentsPage />} />
-          <Route path="/students/:id" element={<StudentDetailPage />} />
-          <Route path="/deployments" element={<DeploymentsPage />} />
+
+          {/* Teacher/Admin Routes */}
+          <Route path="/students" element={
+            <TeacherOrAdmin><StudentsPage /></TeacherOrAdmin>
+          } />
+          <Route path="/students/:id" element={
+            <TeacherOrAdmin><StudentDetailPage /></TeacherOrAdmin>
+          } />
+          <Route path="/deployments" element={
+            <TeacherOrAdmin><DeploymentsPage /></TeacherOrAdmin>
+          } />
+
+          {/* Project Status - accessible by all authenticated users */}
           <Route path="/projects/:id/status" element={<ProjectStatusPage />} />
 
-          {/* Admin Routes */}
-          <Route path="/admin/projects" element={<AdminProjectsPage />} />
-          <Route path="/admin/registry" element={<RegistryPage />} />
-          <Route path="/admin/monitoring" element={<MonitoringPage />} />
-          <Route path="/admin/settings" element={<SettingsPage />} />
+          {/* Student's own project (alias for /projects/me/status) */}
+          <Route path="/projects/me/status" element={<ProjectStatusPage isStudentView />} />
+
+          {/* Admin Only Routes */}
+          <Route path="/admin/projects" element={
+            <AdminOnly><AdminProjectsPage /></AdminOnly>
+          } />
+          <Route path="/admin/registry" element={
+            <AdminOnly><RegistryPage /></AdminOnly>
+          } />
+          <Route path="/admin/monitoring" element={
+            <TeacherOrAdmin><MonitoringPage /></TeacherOrAdmin>
+          } />
+          <Route path="/admin/settings" element={
+            <AdminOnly><SettingsPage /></AdminOnly>
+          } />
+          <Route path="/admin/accounts" element={
+            <AdminOnly><AccountsPage /></AdminOnly>
+          } />
+          <Route path="/admin/audit" element={
+            <AdminOnly><AuditPage /></AdminOnly>
+          } />
+
+          {/* Common Routes */}
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/help/system" element={<SystemGuidePage />} />
 
@@ -52,11 +87,15 @@ const AppRoutes = () => {
 
 const App = () => {
   return (
-    <BrowserRouter>
-      <AuthProvider>
-        <AppRoutes />
-      </AuthProvider>
-    </BrowserRouter>
+    <QueryClientProvider client={queryClient}>
+      <BrowserRouter>
+        <ThemeProvider>
+          <AuthProvider>
+            <AppRoutes />
+          </AuthProvider>
+        </ThemeProvider>
+      </BrowserRouter>
+    </QueryClientProvider>
   )
 }
 

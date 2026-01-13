@@ -15,11 +15,14 @@ import DeploymentStatusModal from '../components/DeploymentStatusModal'
 import BuildConfigModal from '../components/BuildConfigModal'
 import BuildHistoryModal from '../components/BuildHistoryModal'
 import BuildStatusModal from '../components/BuildStatusModal'
+import ActionDropdown, { ActionItem } from '../components/ActionDropdown'
+import TableSkeleton from '../components/TableSkeleton'
 
 const StudentsPage = () => {
     const navigate = useNavigate()
     const [searchParams] = useSearchParams()
     const [students, setStudents] = useState<Student[]>([])
+    const [loading, setLoading] = useState(true)
 
 
     // Modals
@@ -53,10 +56,13 @@ const StudentsPage = () => {
     // Load Data
     const loadData = async () => {
         try {
+            setLoading(true)
             const data = await studentsApi.list() as unknown as Student[]
             setStudents(data)
         } catch (err) {
             notify('加载数据失败', 'error', 2000)
+        } finally {
+            setLoading(false)
         }
     }
 
@@ -280,200 +286,208 @@ const StudentsPage = () => {
             {/* Content */}
             <div className="content-scroll">
                 <div className="modern-card">
-                    <DataGrid
-                        dataSource={students}
-                        showBorders={false}
-                        focusedRowEnabled={true}
-                        columnAutoWidth={false}
-                        columnMinWidth={100}
-                        allowColumnResizing={true}
-                        columnResizingMode="widget"
-                        keyExpr="id"
-                        rowAlternationEnabled={true}
-                        columnHidingEnabled={true}
-                        width="100%"
-                        wordWrapEnabled={true}
-                    >
-                        <SearchPanel visible={true} width={300} placeholder="搜索项目..." />
-                        <FilterRow visible={true} />
-                        <Paging defaultPageSize={10} />
+                    {loading ? (
+                        <TableSkeleton rows={8} />
+                    ) : (
+                        <DataGrid
+                            dataSource={students}
+                            showBorders={false}
+                            focusedRowEnabled={true}
+                            columnAutoWidth={false}
+                            columnMinWidth={100}
+                            allowColumnResizing={true}
+                            columnResizingMode="widget"
+                            keyExpr="id"
+                            rowAlternationEnabled={true}
+                            columnHidingEnabled={true}
+                            width="100%"
+                            wordWrapEnabled={true}
+                        >
+                            <SearchPanel visible={true} width={300} placeholder="搜索项目..." />
+                            <FilterRow visible={true} />
+                            <Paging defaultPageSize={10} />
 
-                        <Column dataField="student_code" caption="学号" width={120} fixed={true} />
-                        <Column dataField="name" caption="姓名" width={120} fixed={true} />
-                        <Column
-                            dataField="project_type"
-                            caption="类型"
-                            width={80}
-                            cellRender={(d) => (
-                                <span className={`tag ${d.value === 'gd' ? 'tag-blue' : 'tag-gray'}`}>
-                                    {d.value === 'gd' ? '毕设' : '课设'}
-                                </span>
-                            )}
-                        />
-
-                        <Column
-                            caption="Git仓库"
-                            width={80}
-                            alignment="center"
-                            cellRender={(data) => {
-                                const url = data.data.git_repo_url;
-                                if (!url) return <span style={{ color: '#ccc' }}>-</span>;
-                                return (
-                                    <a href={url} target="_blank" rel="noopener noreferrer" title="访问代码仓库">
-                                        <i className="dx-icon-globe" style={{ fontSize: 18, color: '#1890ff' }}></i>
-                                    </a>
-                                );
-                            }}
-                        />
-
-                        <Column
-                            caption="门户"
-                            width={80}
-                            alignment="center"
-                            cellRender={(data) => {
-                                const domain = data.data.domain;
-                                const status = data.data.latest_deploy_status;
-                                const isRunning = status === 'running' || status === 'success';
-                                if (!domain || !isRunning) return <span style={{ color: '#ccc' }}>-</span>;
-                                const url = domain.startsWith('http') ? domain : `http://${domain}`;
-                                return (
-                                    <a href={url} target="_blank" rel="noopener noreferrer" title="访问部署门户">
-                                        <i className="dx-icon-home" style={{ fontSize: 18, color: '#52c41a' }}></i>
-                                    </a>
-                                );
-                            }}
-                        />
-
-                        <Column
-                            dataField="running_image"
-                            caption="当前运行镜像"
-                            minWidth={260}
-                            cellRender={(data) => (
-                                <div style={{ fontSize: 12, color: '#666', lineHeight: '1.4' }}>
-                                    {data.value ? data.value.split('\n').map((img: string, idx: number) => (
-                                        <div key={idx} style={{ marginBottom: 2 }}>{img}</div>
-                                    )) : '-'}
-                                </div>
-                            )}
-                        />
-
-                        <Column
-                            dataField="latest_deploy_status"
-                            caption="状态"
-                            width={160}
-                            cellRender={(cellData) => {
-                                const status = cellData.value;
-                                let badgeClass = 'st-default';
-                                let statusText = '未部署';
-                                let color = '#d9d9d9';
-
-                                switch (status) {
-                                    case 'running':
-                                    case 'success':
-                                        badgeClass = 'st-success';
-                                        statusText = '运行中';
-                                        color = '#52c41a';
-                                        break;
-                                    case 'deploying':
-                                    case 'pending':
-                                        badgeClass = 'st-waiting';
-                                        statusText = '部署中';
-                                        color = '#1890ff';
-                                        break;
-                                    case 'error':
-                                    case 'failed':
-                                        badgeClass = 'st-danger';
-                                        statusText = '异常';
-                                        color = '#ff4d4f';
-                                        break;
-                                }
-
-                                return (
-                                    <span className={`status-badge ${badgeClass}`}>
-                                        <span className="dot" style={{ background: color }}></span>
-                                        {statusText}
+                            <Column dataField="student_code" caption="学号" width={120} fixed={true} />
+                            <Column dataField="name" caption="姓名" width={120} fixed={true} />
+                            <Column
+                                dataField="project_type"
+                                caption="类型"
+                                width={80}
+                                cellRender={(d) => (
+                                    <span className={`tag ${d.value === 'gd' ? 'tag-blue' : 'tag-gray'}`}>
+                                        {d.value === 'gd' ? '毕设' : '课设'}
                                     </span>
-                                );
-                            }}
-                        />
-                        <Column
-                            caption="操作"
-                            width={600}
-                            fixed={true}
-                            fixedPosition="right"
-                            alignment="center"
-                            cellRender={(data) => (
-                                <div className="table-actions">
-                                    <Button
-                                        text="监控"
-                                        icon="chart"
-                                        type="normal"
-                                        stylingMode="outlined"
-                                        onClick={(e) => {
-                                            e.event?.stopPropagation();
-                                            navigate(`/projects/${data.data.id}/status`);
-                                        }}
-                                        height={24}
-                                        style={{ fontSize: 12 }}
-                                    />
-                                    <Button
-                                        text="部署"
-                                        icon="upload"
-                                        type="default"
-                                        stylingMode="outlined"
-                                        onClick={() => openDeployPopup(data.data)}
-                                        height={24}
-                                        style={{ fontSize: 12 }}
-                                    />
-                                    <Button
-                                        text="构建"
-                                        icon="toolbox"
-                                        type="normal"
-                                        stylingMode="outlined"
-                                        onClick={() => handleTriggerBuild(data.data)}
-                                        height={24}
-                                        style={{ fontSize: 12 }}
-                                    />
-                                    <Button
-                                        text="构建记录"
-                                        icon="event"
-                                        type="normal"
-                                        stylingMode="outlined"
-                                        onClick={() => openBuildHistoryPopup(data.data)}
-                                        height={24}
-                                        style={{ fontSize: 12 }}
-                                    />
-                                    <Button
-                                        text="部署最新"
-                                        icon="arrowup"
-                                        type="normal"
-                                        stylingMode="outlined"
-                                        onClick={() => handleDeployLatestBuild(data.data)}
-                                        height={24}
-                                        style={{ fontSize: 12 }}
-                                    />
-                                    <Button
-                                        text="配置"
-                                        icon="optionsgear"
-                                        type="normal"
-                                        stylingMode="outlined"
-                                        onClick={() => openBuildConfigPopup(data.data)}
-                                        height={24}
-                                        style={{ fontSize: 12 }}
-                                    />
-                                    <Button
-                                        text="删除"
-                                        icon="trash"
-                                        type="danger"
-                                        stylingMode="outlined"
-                                        onClick={() => handleDeleteStudent(data.data)}
-                                        height={24}
-                                        style={{ fontSize: 12 }}
-                                    />
-                                </div>
-                            )}
-                        />
-                    </DataGrid>
+                                )}
+                            />
+
+                            <Column
+                                caption="Git仓库"
+                                width={80}
+                                alignment="center"
+                                cellRender={(data) => {
+                                    const url = data.data.git_repo_url;
+                                    if (!url) return <span style={{ color: '#ccc' }}>-</span>;
+                                    return (
+                                        <a href={url} target="_blank" rel="noopener noreferrer" title="访问代码仓库">
+                                            <i className="dx-icon-globe" style={{ fontSize: 18, color: '#1890ff' }}></i>
+                                        </a>
+                                    );
+                                }}
+                            />
+
+                            <Column
+                                caption="门户"
+                                width={80}
+                                alignment="center"
+                                cellRender={(data) => {
+                                    const domain = data.data.domain;
+                                    const status = data.data.latest_deploy_status;
+                                    const isRunning = status === 'running' || status === 'success';
+                                    if (!domain || !isRunning) return <span style={{ color: '#ccc' }}>-</span>;
+                                    const url = domain.startsWith('http') ? domain : `http://${domain}`;
+                                    return (
+                                        <a href={url} target="_blank" rel="noopener noreferrer" title="访问部署门户">
+                                            <i className="dx-icon-home" style={{ fontSize: 18, color: '#52c41a' }}></i>
+                                        </a>
+                                    );
+                                }}
+                            />
+
+                            <Column
+                                dataField="running_image"
+                                caption="当前运行镜像"
+                                minWidth={260}
+                                cellRender={(data) => (
+                                    <div style={{ fontSize: 12, color: '#666', lineHeight: '1.4' }}>
+                                        {data.value ? data.value.split('\n').map((img: string, idx: number) => (
+                                            <div key={idx} style={{ marginBottom: 2 }}>{img}</div>
+                                        )) : '-'}
+                                    </div>
+                                )}
+                            />
+
+                            <Column
+                                dataField="latest_deploy_status"
+                                caption="状态"
+                                width={160}
+                                cellRender={(cellData) => {
+                                    const status = cellData.value;
+                                    let badgeClass = 'st-default';
+                                    let statusText = '未部署';
+                                    let color = '#d9d9d9';
+
+                                    switch (status) {
+                                        case 'running':
+                                        case 'success':
+                                            badgeClass = 'st-success';
+                                            statusText = '运行中';
+                                            color = '#52c41a';
+                                            break;
+                                        case 'deploying':
+                                        case 'pending':
+                                            badgeClass = 'st-waiting';
+                                            statusText = '部署中';
+                                            color = '#1890ff';
+                                            break;
+                                        case 'error':
+                                        case 'failed':
+                                            badgeClass = 'st-danger';
+                                            statusText = '异常';
+                                            color = '#ff4d4f';
+                                            break;
+                                    }
+
+                                    return (
+                                        <span className={`status-badge ${badgeClass}`}>
+                                            <span className="dot" style={{ background: color }}></span>
+                                            {statusText}
+                                        </span>
+                                    );
+                                }}
+                            />
+                            <Column
+                                caption="操作"
+                                width={280}
+                                fixed={true}
+                                fixedPosition="right"
+                                alignment="center"
+                                cellRender={(data) => {
+                                    const student = data.data as Student;
+
+                                    const deployActions: ActionItem[] = [
+                                        { id: 'deploy', text: '自定义部署', icon: 'upload' },
+                                        { id: 'deployLatest', text: '部署最新构建', icon: 'arrowup' }
+                                    ];
+
+                                    const configActions: ActionItem[] = [
+                                        { id: 'build', text: '触发构建', icon: 'toolbox' },
+                                        { id: 'history', text: '构建记录', icon: 'event' },
+                                        { id: 'config', text: '构建配置', icon: 'optionsgear' }
+                                    ];
+
+                                    const handleAction = (actionId: string) => {
+                                        switch (actionId) {
+                                            case 'monitor':
+                                                navigate(`/projects/${student.id}/status`);
+                                                break;
+                                            case 'deploy':
+                                                openDeployPopup(student);
+                                                break;
+                                            case 'deployLatest':
+                                                handleDeployLatestBuild(student);
+                                                break;
+                                            case 'build':
+                                                handleTriggerBuild(student);
+                                                break;
+                                            case 'history':
+                                                openBuildHistoryPopup(student);
+                                                break;
+                                            case 'config':
+                                                openBuildConfigPopup(student);
+                                                break;
+                                            case 'delete':
+                                                handleDeleteStudent(student);
+                                                break;
+                                        }
+                                    };
+
+                                    return (
+                                        <div className="table-actions">
+                                            <Button
+                                                text="监控"
+                                                icon="chart"
+                                                type="normal"
+                                                stylingMode="outlined"
+                                                onClick={(e) => {
+                                                    e.event?.stopPropagation();
+                                                    handleAction('monitor');
+                                                }}
+                                                height={28}
+                                            />
+                                            <ActionDropdown
+                                                primaryAction={{ id: 'deploy', text: '部署', icon: 'upload', type: 'default' }}
+                                                items={deployActions}
+                                                onItemClick={handleAction}
+                                            />
+                                            <ActionDropdown
+                                                items={configActions}
+                                                onItemClick={handleAction}
+                                                dropdownIcon="setting"
+                                            />
+                                            <Button
+                                                icon="trash"
+                                                type="danger"
+                                                stylingMode="text"
+                                                onClick={() => handleAction('delete')}
+                                                height={28}
+                                                hint="删除"
+                                            />
+                                        </div>
+                                    );
+                                }}
+                            />
+                        </DataGrid>
+                    )}
                 </div>
             </div>
 

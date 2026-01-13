@@ -25,3 +25,11 @@
   - [构建与镜像](student/build.md)
   - [部署与访问](student/deploy.md)
   - [常见问题](student/troubleshooting.md)
+
+- 开发者
+  - [实施路线图](../technical_design/implementation_roadmap.md)
+  - [任务清单](../technical_design/task_checklist.md)
+  - [UI/UX 规范](../technical_design/ui_ux_specification.md)
+  - [API 扩展设计](../technical_design/api_extensions.md)
+  - [教师门户设计](../technical_design/teacher_portal_design.md)
+  - [构建编排器](../technical_design/portal_build_orchestrator.md)

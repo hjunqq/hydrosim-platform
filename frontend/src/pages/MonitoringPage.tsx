@@ -1,13 +1,20 @@
 import React, { useEffect, useState } from 'react';
-import { monitoringApi, ClusterOverview, NamespaceUsage } from '../api/monitoring';
+import { monitoringApi, ClusterOverview, NamespaceUsage, PodStatusDistribution } from '../api/monitoring';
 import Chart, {
     ArgumentAxis,
     CommonSeriesSettings,
     Legend,
     Series,
     Tooltip,
-    ValueAxis
+    ValueAxis,
+    Label
 } from 'devextreme-react/chart';
+import PieChart, {
+    Series as PieSeries,
+    Label as PieLabel,
+    Connector,
+    Legend as PieLegend
+} from 'devextreme-react/pie-chart';
 import DataGrid, { Column, FilterRow, Paging, SearchPanel } from 'devextreme-react/data-grid';
 import Button from 'devextreme-react/button';
 import SelectBox from 'devextreme-react/select-box';
@@ -15,6 +22,7 @@ import SelectBox from 'devextreme-react/select-box';
 const MonitoringPage: React.FC = () => {
     const [overview, setOverview] = useState<ClusterOverview | null>(null);
     const [namespaces, setNamespaces] = useState<NamespaceUsage[]>([]);
+    const [podStatus, setPodStatus] = useState<{ status: string; count: number }[]>([]);
     const [loading, setLoading] = useState(true);
 
     // Mock history data for charts
@@ -34,14 +42,30 @@ const MonitoringPage: React.FC = () => {
     const loadData = async () => {
         try {
             setLoading(true);
-            const [overviewData, nsData] = await Promise.all([
+            const [overviewData, nsData, podStatusData] = await Promise.all([
                 monitoringApi.getOverview(),
-                monitoringApi.getNamespaceUsage()
+                monitoringApi.getNamespaceUsage(),
+                monitoringApi.getPodStatusDistribution()
             ]);
             setOverview(overviewData);
             setNamespaces(nsData);
-            setCpuHistory(buildHistory(overviewData, timeRange));
 
+            // Transform pod status to chart format
+            const statusColors: Record<string, string> = {
+                Running: '#52c41a',
+                Pending: '#faad14',
+                Succeeded: '#1890ff',
+                Failed: '#ff4d4f',
+                Unknown: '#8c8c8c'
+            };
+            const podStatusArray = Object.entries(podStatusData).map(([status, count]) => ({
+                status,
+                count,
+                color: statusColors[status] || '#8c8c8c'
+            })).filter(item => item.count > 0);
+            setPodStatus(podStatusArray);
+
+            setCpuHistory(buildHistory(overviewData, timeRange));
         } catch (error) {
             console.error("Failed to load monitoring data", error);
         } finally {
@@ -152,7 +176,7 @@ const MonitoringPage: React.FC = () => {
                             </div>
                         </div>
 
-                        {/* Charts Section */}
+                        {/* Charts Section - Resource Trend + Pod Status Pie */}
                         <div className="grid-2-1">
                             <div className="modern-card">
                                 <div className="card-header">
@@ -185,32 +209,65 @@ const MonitoringPage: React.FC = () => {
 
                             <div className="modern-card">
                                 <div className="card-header">
-                                    <span className="card-title">Namespace 分布</span>
+                                    <span className="card-title">Pod 状态分布</span>
                                 </div>
                                 <div className="card-body">
-                                    {namespaces.length === 0 ? (
+                                    {podStatus.length === 0 ? (
                                         <div className="empty-state">
                                             <i className="dx-icon-datapie"></i>
-                                            <p>暂无 Namespace 数据</p>
+                                            <p>暂无 Pod 状态数据</p>
                                         </div>
                                     ) : (
-                                        <Chart dataSource={namespaces} height={300}>
-                                            <Series
-                                                valueField="active_pods"
-                                                argumentField="namespace"
-                                                name="Active Pods"
-                                                type="bar"
-                                                color="var(--success-6)"
-                                            />
-                                            <Legend visible={false} />
-                                            <Tooltip enabled={true} />
-                                        </Chart>
+                                        <PieChart
+                                            id="pie-chart"
+                                            dataSource={podStatus}
+                                            palette={podStatus.map(p => p.color)}
+                                            height={300}
+                                        >
+                                            <PieSeries argumentField="status" valueField="count">
+                                                <PieLabel visible={true} customizeText={(point: any) => `${point.argument}: ${point.value}`}>
+                                                    <Connector visible={true} width={1} />
+                                                </PieLabel>
+                                            </PieSeries>
+                                            <PieLegend verticalAlignment="bottom" horizontalAlignment="center" />
+                                            <Tooltip enabled={true} customizeTooltip={(arg: any) => ({ text: `${arg.argument}: ${arg.value} 个` })} />
+                                        </PieChart>
                                     )}
                                 </div>
                             </div>
                         </div>
 
-                        {/* Anomaly/Detail List */}
+                        {/* Namespace Bar Chart */}
+                        <div className="modern-card">
+                            <div className="card-header">
+                                <span className="card-title">Namespace Pod 分布</span>
+                            </div>
+                            <div className="card-body">
+                                {namespaces.length === 0 ? (
+                                    <div className="empty-state">
+                                        <i className="dx-icon-datapie"></i>
+                                        <p>暂无 Namespace 数据</p>
+                                    </div>
+                                ) : (
+                                    <Chart dataSource={namespaces} height={300}>
+                                        <Series
+                                            valueField="active_pods"
+                                            argumentField="namespace"
+                                            name="Active Pods"
+                                            type="bar"
+                                            color="var(--success-6)"
+                                        />
+                                        <ArgumentAxis>
+                                            <Label rotationAngle={-45} overlappingBehavior="rotate" />
+                                        </ArgumentAxis>
+                                        <Legend visible={false} />
+                                        <Tooltip enabled={true} />
+                                    </Chart>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Namespace Detail Table */}
                         <div className="modern-card">
                             <div className="card-header">
                                 <span className="card-title">Namespace 资源详情</span>

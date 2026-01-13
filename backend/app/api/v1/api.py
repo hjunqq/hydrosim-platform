@@ -6,7 +6,7 @@ from fastapi import APIRouter
 from app.api.v1.endpoints import (
     auth, projects, students, deployments, workflows, deploy_controller,
     admin_projects, registries, monitoring, admin_settings, profile,
-    webhooks, builds, build_configs
+    webhooks, builds, build_configs, batch, audit, websocket
 )
 
 
@@ -25,8 +25,15 @@ api_router.include_router(admin_projects.router, prefix="/admin", tags=["Admin P
 api_router.include_router(registries.router, prefix="/admin/registries", tags=["Admin Registries"])
 api_router.include_router(monitoring.router, prefix="/admin/monitoring", tags=["Admin Monitoring"])
 api_router.include_router(admin_settings.router, prefix="/admin", tags=["Admin Settings"])
+api_router.include_router(batch.router, prefix="/admin/batch", tags=["Admin Batch Operations"])
+api_router.include_router(audit.router, prefix="/admin/audit", tags=["Admin Audit Logs"])
 
 # Build Orchestration
 api_router.include_router(webhooks.router, prefix="/webhooks", tags=["Webhooks"])
 api_router.include_router(builds.router, prefix="/builds", tags=["Builds"])
 api_router.include_router(build_configs.router, prefix="/build-configs", tags=["Build Configs"])
+
+# WebSocket
+api_router.include_router(websocket.router, prefix="/ws", tags=["WebSocket"])
+
+

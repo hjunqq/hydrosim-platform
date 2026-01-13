@@ -25,8 +25,8 @@ const LoginPage = () => {
 
       // Redirect based on role
       const user = JSON.parse(localStorage.getItem('user') || '{}')
-      if (user.role === 'student' && user.id) {
-        navigate(`/projects/${user.id}/status`)
+      if (user.role === 'student') {
+        navigate('/projects/me/status')
       } else {
         navigate('/dashboard')
       }

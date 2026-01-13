@@ -27,6 +27,11 @@ interface StatusConfig {
     cssClass: string;
 }
 
+interface ProjectStatusPageProps {
+    /** 学生视图模式，自动使用当前登录学生的项目 */
+    isStudentView?: boolean;
+}
+
 const STATUS_CONFIG: Record<DisplayStatus, StatusConfig> = {
     NOT_DEPLOYED: { color: '#9E9E9E', label: '尚未部署', description: '该项目暂无部署记录', icon: 'dx-icon-info', cssClass: 'status-default' },
     BUILDING: { color: '#2196F3', label: '正在构建', description: '系统正在构建Docker镜像...', icon: 'dx-icon-toolbox', cssClass: 'status-deploying' },
@@ -37,8 +42,10 @@ const STATUS_CONFIG: Record<DisplayStatus, StatusConfig> = {
     UPDATING: { color: '#1890ff', label: '更新中', description: '正在应用新的配置...', icon: 'dx-icon-refresh', cssClass: 'status-deploying' },
 };
 
-const ProjectStatusPage: React.FC = () => {
-    const { id } = useParams<{ id: string }>();
+const ProjectStatusPage: React.FC<ProjectStatusPageProps> = ({ isStudentView = false }) => {
+    const { id: paramId } = useParams<{ id: string }>();
+    // 学生视图模式下自动使用 'me'
+    const id = isStudentView ? 'me' : paramId;
     const navigate = useNavigate();
     const [project, setProject] = useState<AdminProject | null>(null);
     const [isLoading, setIsLoading] = useState(true);

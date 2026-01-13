@@ -1,0 +1,140 @@
+/* AccountsPage Styles */
+
+/* Import Result Modal */
+.import-result {
+    padding: 16px;
+}
+
+.import-stats {
+    display: flex;
+    gap: 24px;
+    justify-content: center;
+    margin-bottom: 24px;
+}
+
+.stat-item {
+    text-align: center;
+    padding: 16px 32px;
+    border-radius: 8px;
+    background: var(--fill-1, #f5f5f5);
+}
+
+.stat-item .stat-value {
+    font-size: 32px;
+    font-weight: 700;
+    line-height: 1.2;
+}
+
+.stat-item .stat-label {
+    font-size: 13px;
+    color: var(--text-3);
+    margin-top: 4px;
+}
+
+.stat-total .stat-value {
+    color: var(--text-1);
+}
+
+.stat-success {
+    background: rgba(82, 196, 26, 0.1);
+}
+
+.stat-success .stat-value {
+    color: #52c41a;
+}
+
+.stat-failed {
+    background: rgba(255, 77, 79, 0.1);
+}
+
+.stat-failed .stat-value {
+    color: #ff4d4f;
+}
+
+/* Error Table */
+.import-errors {
+    margin-top: 24px;
+}
+
+.import-errors h4 {
+    margin: 0 0 12px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-1);
+}
+
+.error-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.error-table th,
+.error-table td {
+    padding: 8px 12px;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color, #e5e5e5);
+}
+
+.error-table th {
+    background: var(--fill-1, #fafafa);
+    font-weight: 600;
+    color: var(--text-2);
+}
+
+.error-table td {
+    color: var(--text-1);
+}
+
+.error-table tr:hover td {
+    background: var(--fill-1, #f5f5f5);
+}
+
+.more-errors {
+    margin-top: 12px;
+    font-size: 12px;
+    color: var(--text-3);
+    text-align: center;
+}
+
+/* Password Result Modal */
+.password-result {
+    padding: 16px;
+}
+
+.password-info p {
+    margin: 0 0 12px;
+    font-size: 14px;
+    color: var(--text-1);
+}
+
+.new-password {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px;
+    background: linear-gradient(135deg, #52c41a10, #1890ff10);
+    border-radius: 8px;
+    margin: 16px 0;
+}
+
+.new-password span {
+    font-size: 14px;
+    color: var(--text-2);
+}
+
+.new-password code {
+    font-size: 20px;
+    font-weight: 700;
+    font-family: 'JetBrains Mono', 'Consolas', monospace;
+    color: #1890ff;
+    background: transparent;
+    padding: 0;
+    letter-spacing: 2px;
+}
+
+.password-hint {
+    font-size: 12px;
+    color: var(--text-3);
+    margin-top: 12px;
+}

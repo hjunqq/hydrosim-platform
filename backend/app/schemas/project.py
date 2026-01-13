@@ -21,4 +21,4 @@ class ProjectOut(BaseModel):
     running_image: Optional[str] = None # Added for real-time image info
 
     class Config:
-        orm_mode = True
+        from_attributes = True

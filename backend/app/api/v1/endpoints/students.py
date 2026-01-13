@@ -9,6 +9,7 @@ from app.models import ProjectType
 from app.api import deps
 from app.api.auth_deps import get_current_user
 from app.core.security import get_password_hash
+from app.core.exceptions import NotFoundError, PermissionDeniedError, ConflictError, BadRequestError
 from app.models.user import UserRole
 from app.services.system_settings import get_or_create_settings, get_student_domain_parts
 
@@ -30,7 +31,7 @@ def list_students(
 ):
     role = _role_value(current_user)
     if role == UserRole.student.value:
-        raise HTTPException(status_code=403, detail="Not authorized to list students")
+        raise PermissionDeniedError("Not authorized to list students")
     query = db.query(models.Student)
     
     # Permission control: students only see themselves, teachers see their own students
@@ -45,7 +46,7 @@ def list_students(
         try:
             project_enum = ProjectType(project_type)
         except ValueError as exc:
-            raise HTTPException(status_code=400, detail="Invalid project_type") from exc
+            raise BadRequestError("Invalid project_type") from exc
         query = query.filter(models.Student.project_type == project_enum)
 
     if role == UserRole.teacher.value:
@@ -95,13 +96,13 @@ def get_student(
 ):
     student = db.query(models.Student).filter(models.Student.id == student_id).first()
     if not student:
-        raise HTTPException(status_code=404, detail="Student not found")
+        raise NotFoundError("Student", student_id)
 
     role = _role_value(current_user)
     if role == UserRole.teacher.value and student.teacher_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Not authorized to view this student")
+        raise PermissionDeniedError("Not authorized to view this student")
     if role == UserRole.student.value and current_user.id != student.id:
-        raise HTTPException(status_code=403, detail="Not authorized to view this student")
+        raise PermissionDeniedError("Not authorized to view this student")
 
     if not student.domain:
         settings = get_or_create_settings(db)
@@ -119,14 +120,14 @@ def create_student(
 ):
     role = _role_value(current_user)
     if role == UserRole.student.value:
-        raise HTTPException(status_code=403, detail="Not authorized to create students")
+        raise PermissionDeniedError("Not authorized to create students")
     existing = (
         db.query(models.Student)
         .filter(models.Student.student_code == student_in.student_code)
         .first()
     )
     if existing:
-        raise HTTPException(status_code=409, detail="Student code already exists")
+        raise ConflictError("Student code already exists")
 
     # 自动生成域名
     if not student_in.domain:
@@ -210,3 +211,66 @@ def delete_student(
 
     db.delete(student)
     db.commit()
+
+
+def _generate_random_password(length: int = 8) -> str:
+    """生成随机密码"""
+    import secrets
+    import string
+    alphabet = string.ascii_letters + string.digits
+    return ''.join(secrets.choice(alphabet) for _ in range(length))
+
+
+@router.post("/{student_id}/reset-password/")
+def reset_student_password(
+    student_id: int,
+    db: Session = Depends(deps.get_db),
+    current_user: models.Teacher = Depends(get_current_user),
+):
+    """重置学生密码为随机密码（仅管理员可操作）"""
+    role = _role_value(current_user)
+    if role != UserRole.admin.value:
+        raise HTTPException(status_code=403, detail="Only admin can reset passwords")
+    
+    student = db.query(models.Student).filter(models.Student.id == student_id).first()
+    if not student:
+        raise HTTPException(status_code=404, detail="Student not found")
+    
+    new_password = _generate_random_password()
+    student.password_hash = get_password_hash(new_password)
+    db.commit()
+    
+    return {
+        "message": "Password reset successfully",
+        "new_password": new_password,
+        "student_code": student.student_code,
+        "student_name": student.name
+    }
+
+
+@router.patch("/{student_id}/status/")
+def toggle_student_status(
+    student_id: int,
+    is_active: bool,
+    db: Session = Depends(deps.get_db),
+    current_user: models.Teacher = Depends(get_current_user),
+):
+    """启用/禁用学生账号（仅管理员可操作）"""
+    role = _role_value(current_user)
+    if role != UserRole.admin.value:
+        raise HTTPException(status_code=403, detail="Only admin can change account status")
+    
+    student = db.query(models.Student).filter(models.Student.id == student_id).first()
+    if not student:
+        raise HTTPException(status_code=404, detail="Student not found")
+    
+    student.is_active = is_active
+    db.commit()
+    db.refresh(student)
+    
+    return {
+        "message": f"Account {'enabled' if is_active else 'disabled'} successfully",
+        "student_code": student.student_code,
+        "is_active": student.is_active
+    }
+

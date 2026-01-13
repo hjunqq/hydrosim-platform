@@ -1,10 +1,30 @@
-import { Outlet, useNavigate, NavLink } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { Outlet, useNavigate, NavLink, useLocation } from 'react-router-dom'
 import notify from 'devextreme/ui/notify'
 import { useAuth } from '../contexts/AuthContext'
+import ThemeToggle from '../components/ThemeToggle'
 
 const MainLayout = () => {
     const navigate = useNavigate()
+    const location = useLocation()
     const { user, logout } = useAuth()
+    const [sidebarOpen, setSidebarOpen] = useState(false)
+
+    // Close sidebar on route change (mobile)
+    useEffect(() => {
+        setSidebarOpen(false)
+    }, [location.pathname])
+
+    // Close sidebar on window resize to desktop
+    useEffect(() => {
+        const handleResize = () => {
+            if (window.innerWidth > 768) {
+                setSidebarOpen(false)
+            }
+        }
+        window.addEventListener('resize', handleResize)
+        return () => window.removeEventListener('resize', handleResize)
+    }, [])
 
     const menuItems = [
         { id: 'dashboard', text: '总览', icon: 'dx-icon-chart', path: '/dashboard', roles: ['admin', 'teacher', 'student'] },
@@ -23,8 +43,14 @@ const MainLayout = () => {
 
     return (
         <div className="app-shell">
+            {/* Mobile Overlay */}
+            <div
+                className={`sidebar-overlay ${sidebarOpen ? 'visible' : ''}`}
+                onClick={() => setSidebarOpen(false)}
+            />
+
             {/* Sidebar */}
-            <aside className="sidebar" >
+            <aside className={`sidebar ${sidebarOpen ? 'mobile-open' : ''}`}>
                 <div className="logo-area">
                     <div className="logo-icon">H</div>
                     <div className="logo-text">Hydrosim Portal</div>
@@ -53,8 +79,8 @@ const MainLayout = () => {
                         </NavLink>
                     )}
 
-                    {/* Admin/Teacher/Student Resource Monitoring */}
-                    {(user?.role === 'admin' || user?.role === 'teacher' || user?.role === 'student') && (
+                    {/* Admin/Teacher Resource Monitoring */}
+                    {(user?.role === 'admin' || user?.role === 'teacher') && (
                         <>
                             <div className="nav-group-title">系统运维</div>
                             {user?.role === 'admin' && (
@@ -63,9 +89,17 @@ const MainLayout = () => {
                                         <span className="nav-icon"><i className="dx-icon-folder"></i></span>
                                         全局项目
                                     </NavLink>
+                                    <NavLink to="/admin/accounts" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+                                        <span className="nav-icon"><i className="dx-icon-group"></i></span>
+                                        账号管理
+                                    </NavLink>
                                     <NavLink to="/admin/registry" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
                                         <span className="nav-icon"><i className="dx-icon-datapie"></i></span>
                                         镜像仓库
+                                    </NavLink>
+                                    <NavLink to="/admin/audit" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+                                        <span className="nav-icon"><i className="dx-icon-clock"></i></span>
+                                        审计日志
                                     </NavLink>
                                 </>
                             )}
@@ -76,17 +110,25 @@ const MainLayout = () => {
                         </>
                     )}
                 </nav>
-            </aside >
+            </aside>
 
             {/* Main Workspace */}
-            < div className="workspace" >
+            <div className="workspace">
                 {/* Global Header */}
-                < header className="global-header" >
+                <header className="global-header">
                     <div className="header-left">
-                        {/* Placeholder for Breadcrumbs or Page Title if strictly needed globally */}
+                        {/* Mobile menu toggle */}
+                        <button
+                            className="menu-toggle-btn"
+                            onClick={() => setSidebarOpen(!sidebarOpen)}
+                            title="菜单"
+                        >
+                            <i className="dx-icon-menu" aria-hidden="true"></i>
+                        </button>
                     </div>
 
                     <div className="header-right">
+                        <ThemeToggle />
                         <button className="header-icon-btn" title="帮助文档" onClick={() => navigate('/help/system')}>
                             <i className="dx-icon-help" aria-hidden="true"></i>
                         </button>
@@ -111,13 +153,13 @@ const MainLayout = () => {
                             <i className="dx-icon-return" aria-hidden="true"></i>
                         </button>
                     </div>
-                </header >
+                </header>
 
                 <div className="content-area" style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
                     <Outlet />
                 </div>
-            </div >
-        </div >
+            </div>
+        </div>
     )
 }
 

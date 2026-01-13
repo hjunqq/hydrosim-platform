@@ -1,0 +1,31 @@
+.filter-card {
+    margin-bottom: 16px;
+    padding: 16px 20px;
+}
+
+.filter-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    align-items: flex-end;
+}
+
+.filter-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.filter-item label {
+    font-size: 12px;
+    color: var(--text-3);
+    font-weight: 500;
+}
+
+.pagination-info {
+    padding: 12px 16px;
+    text-align: right;
+    color: var(--text-3);
+    font-size: 13px;
+    border-top: 1px solid var(--border-color);
+}

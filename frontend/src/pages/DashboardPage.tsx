@@ -5,17 +5,29 @@ import Button from 'devextreme-react/button'
 import ProgressBar from 'devextreme-react/progress-bar'
 import { studentsApi, Student } from '../api/students'
 import { monitoringApi, ClusterOverview } from '../api/monitoring'
+import { projectsApi } from '../api/projects'
+import { useAuth } from '../contexts/AuthContext'
 
 const DashboardPage = () => {
   const navigate = useNavigate()
+  const { user } = useAuth()
   const [stats, setStats] = useState({ total: 0, running: 0, failed: 0, pending: 0 })
   const [recentProjects, setRecentProjects] = useState<Student[]>([])
   const [clusterOverview, setClusterOverview] = useState<ClusterOverview | null>(null)
+  const isStudent = user?.role === 'student'
 
   useEffect(() => {
+    if (!user?.role) return
+
     const fetchData = async () => {
       try {
-        const data = await studentsApi.list() as unknown as Student[]
+        let data: Student[] = []
+        if (user.role === 'student') {
+          const me = await projectsApi.getMe() as unknown as Student
+          data = me ? [me] : []
+        } else {
+          data = await studentsApi.list() as unknown as Student[]
+        }
 
         // Calculate Stats
         const total = data.length
@@ -41,7 +53,7 @@ const DashboardPage = () => {
 
     fetchData()
     fetchOverview()
-  }, [])
+  }, [user?.role])
 
   const getStatusClass = (student: Student) => {
     if (student.latest_deploy_status === 'running' || student.latest_deploy_status === 'success') return 'st-success'
@@ -93,7 +105,8 @@ const DashboardPage = () => {
       stylingMode="text"
       onClick={(e) => {
         e.event?.stopPropagation()
-        navigate(`/students/${cellData.data.id}`)
+        const target = isStudent ? '/projects/me/status' : `/students/${cellData.data.id}`
+        navigate(target)
       }}
     />
   )

@@ -11,16 +11,19 @@ def _role_value(user: object) -> str:
     return getattr(getattr(user, "role", None), "value", getattr(user, "role", ""))
 
 
-def _require_monitoring_role(user: object) -> None:
+def _require_monitoring_role(user: object, allow_student: bool = False) -> None:
     role = _role_value(user)
-    if role not in [UserRole.admin.value, UserRole.teacher.value]:
+    allowed_roles = [UserRole.admin.value, UserRole.teacher.value]
+    if allow_student:
+        allowed_roles.append(UserRole.student.value)
+    if role not in allowed_roles:
         raise HTTPException(status_code=403, detail="Not authorized to access monitoring")
 
 @router.get("/overview", response_model=Dict[str, Any])
 def get_cluster_overview(
     current_user = Depends(auth_deps.get_current_user),
 ):
-    _require_monitoring_role(current_user)
+    _require_monitoring_role(current_user, allow_student=True)
     return monitoring_service.get_cluster_overview()
 
 @router.get("/namespaces", response_model=List[Dict[str, Any]])
@@ -29,3 +32,20 @@ def get_namespace_usage(
 ):
     _require_monitoring_role(current_user)
     return monitoring_service.get_namespace_usage()
+
+@router.get("/pod-status", response_model=Dict[str, int])
+def get_pod_status_distribution(
+    current_user = Depends(auth_deps.get_current_user),
+):
+    """Get the distribution of pod phases (Running, Pending, Failed, etc.)"""
+    _require_monitoring_role(current_user, allow_student=True)
+    return monitoring_service.get_pod_status_distribution()
+
+@router.get("/events", response_model=List[Dict[str, Any]])
+def get_recent_events(
+    limit: int = 20,
+    current_user = Depends(auth_deps.get_current_user),
+):
+    """Get recent cluster events"""
+    _require_monitoring_role(current_user)
+    return monitoring_service.get_recent_events(limit=limit)

@@ -1,10 +1,12 @@
 ﻿"""
 FastAPI application main entry point
 """
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app.core.config import settings
+from app.core.exceptions import AppException
 from app.api.v1.api import api_router
 
 app = FastAPI(
@@ -22,6 +24,20 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# Global exception handler for AppException
+@app.exception_handler(AppException)
+async def app_exception_handler(request: Request, exc: AppException) -> JSONResponse:
+    """Handle all AppException and return unified JSON response."""
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "detail": exc.message,
+            "error_code": exc.error_code,
+        }
+    )
+
 
 # Register routes
 app.include_router(api_router, prefix=settings.API_V1_STR)
@@ -44,3 +60,4 @@ if __name__ == "__main__":
     import uvicorn
 
     uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)
+

@@ -97,30 +97,21 @@ class MonitoringService:
             return []
 
         try:
-            # 1. Get all namespaces first
             ns_list = self.v1.list_namespace()
             namespaces = [n.metadata.name for n in ns_list.items]
             
-            # 2. Get all pods
             pods = self.v1.list_pod_for_all_namespaces()
             
-            # 3. Count pods per namespace
             usage_map = {name: 0 for name in namespaces}
             for pod in pods.items:
                 ns = pod.metadata.namespace
                 if ns in usage_map:
                     usage_map[ns] += 1
                 else:
-                    # Case where pod exists but namespace not in list (?) - unlikely
                     usage_map[ns] = 1
 
             result = []
             for ns in namespaces:
-                # Relaxed filter: Show everything that is likely relevant.
-                # If user wants EVERYTHING, we just exclude internal k8s stuff if appropriate,
-                # but "many namespaces" suggests they want visibility.
-                # Let's show all non-system namespaces OR specific system ones.
-                # Actually, showing all is best for "Cluster Monitoring".
                 result.append({
                     "namespace": ns,
                     "active_pods": usage_map.get(ns, 0),
@@ -128,12 +119,75 @@ class MonitoringService:
                     "memory": "N/A"
                 })
             
-            # Provide stable sort
             result.sort(key=lambda x: x['namespace'])
             return result
         except Exception as e:
             logger.error(f"Error fetching namespace stats: {e}")
             return []
+
+    def get_pod_status_distribution(self) -> Dict[str, int]:
+        """Get the distribution of pod phases (Running, Pending, Failed, etc.)"""
+        if not K8S_AVAILABLE or not getattr(self, "v1", None):
+            return self._get_mock_pod_status()
+        
+        try:
+            pods = self.v1.list_pod_for_all_namespaces()
+            status_counts = {
+                "Running": 0,
+                "Pending": 0,
+                "Succeeded": 0,
+                "Failed": 0,
+                "Unknown": 0,
+            }
+            
+            for pod in pods.items:
+                phase = pod.status.phase if pod.status else "Unknown"
+                if phase in status_counts:
+                    status_counts[phase] += 1
+                else:
+                    status_counts["Unknown"] += 1
+            
+            return status_counts
+        except Exception as e:
+            logger.error(f"Error fetching pod status distribution: {e}")
+            return self._get_mock_pod_status()
+
+    def get_recent_events(self, limit: int = 20) -> List[Dict[str, Any]]:
+        """Get recent cluster events (warnings, errors)"""
+        if not K8S_AVAILABLE or not getattr(self, "v1", None):
+            return []
+        
+        try:
+            events = self.v1.list_event_for_all_namespaces(limit=limit)
+            
+            result = []
+            for event in events.items:
+                result.append({
+                    "type": event.type,
+                    "reason": event.reason,
+                    "message": event.message,
+                    "namespace": event.metadata.namespace,
+                    "name": event.involved_object.name if event.involved_object else "unknown",
+                    "kind": event.involved_object.kind if event.involved_object else "unknown",
+                    "count": event.count or 1,
+                    "first_timestamp": event.first_timestamp.isoformat() if event.first_timestamp else None,
+                    "last_timestamp": event.last_timestamp.isoformat() if event.last_timestamp else None,
+                })
+            
+            result.sort(key=lambda x: x.get("last_timestamp") or "", reverse=True)
+            return result[:limit]
+        except Exception as e:
+            logger.error(f"Error fetching cluster events: {e}")
+            return []
+
+    def _get_mock_pod_status(self) -> Dict[str, int]:
+        return {
+            "Running": 10,
+            "Pending": 1,
+            "Succeeded": 3,
+            "Failed": 0,
+            "Unknown": 0,
+        }
 
     def _get_mock_stats(self):
         return {

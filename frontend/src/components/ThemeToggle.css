@@ -1,0 +1,15 @@
+.theme-toggle-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    transition: all 0.3s ease;
+}
+
+.theme-toggle-btn:hover {
+    background: var(--fill-2);
+}
+
+.theme-toggle-btn .dx-icon {
+    font-size: 18px;
+    color: var(--text-2);
+}

@@ -15,6 +15,26 @@ export interface NamespaceUsage {
     memory?: string
 }
 
+export interface PodStatusDistribution {
+    Running: number
+    Pending: number
+    Succeeded: number
+    Failed: number
+    Unknown: number
+}
+
+export interface ClusterEvent {
+    type: string
+    reason: string
+    message: string
+    namespace: string
+    name: string
+    kind: string
+    count: number
+    first_timestamp?: string
+    last_timestamp?: string
+}
+
 export const monitoringApi = {
     async getOverview() {
         const res = await request.get<ClusterOverview>('/api/v1/admin/monitoring/overview');
@@ -24,5 +44,15 @@ export const monitoringApi = {
     async getNamespaceUsage() {
         const res = await request.get<NamespaceUsage[]>('/api/v1/admin/monitoring/namespaces');
         return res as unknown as NamespaceUsage[];
+    },
+
+    async getPodStatusDistribution() {
+        const res = await request.get<PodStatusDistribution>('/api/v1/admin/monitoring/pod-status');
+        return res as unknown as PodStatusDistribution;
+    },
+
+    async getRecentEvents(limit: number = 20) {
+        const res = await request.get<ClusterEvent[]>(`/api/v1/admin/monitoring/events?limit=${limit}`);
+        return res as unknown as ClusterEvent[];
     }
 }

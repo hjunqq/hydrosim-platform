@@ -14,6 +14,7 @@ import { confirm } from 'devextreme/ui/dialog';
 import BuildConfigModal from '../components/BuildConfigModal';
 import BuildHistoryModal from '../components/BuildHistoryModal';
 import BuildStatusModal from '../components/BuildStatusModal';
+import ActionDropdown, { ActionItem } from '../components/ActionDropdown';
 
 const AdminProjectsPage = () => {
     const navigate = useNavigate();
@@ -419,86 +420,87 @@ const AdminProjectsPage = () => {
 
                             <Column
                                 caption="操作"
-                                width={600}
+                                width={300}
                                 fixed={true}
                                 fixedPosition="right"
                                 alignment="center"
-                                cellRender={(data) => (
-                                    <div className="table-actions">
-                                        <Button
-                                            text="监控"
-                                            icon="chart"
-                                            type="normal"
-                                            stylingMode="outlined"
-                                            onClick={(e) => {
-                                                e.event?.stopPropagation();
-                                                navigate(`/projects/${data.data.id}/status`);
-                                            }}
-                                            height={24}
-                                            style={{ fontSize: 12 }}
-                                        />
-                                        <Button
-                                            text="编辑"
-                                            icon="edit"
-                                            type="default"
-                                            stylingMode="outlined"
-                                            onClick={() => handleEditClick(data.data)}
-                                            disabled={data.data.id === 0} // Prevent editing system project
-                                            height={24}
-                                            style={{ fontSize: 12 }}
-                                        />
-                                        <Button
-                                            text="构建"
-                                            icon="toolbox"
-                                            type="normal"
-                                            stylingMode="outlined"
-                                            onClick={() => handleTriggerBuild(data.data)}
-                                            disabled={data.data.id === 0}
-                                            height={24}
-                                            style={{ fontSize: 12 }}
-                                        />
-                                        <Button
-                                            text="构建记录"
-                                            icon="event"
-                                            type="normal"
-                                            stylingMode="outlined"
-                                            onClick={() => openBuildHistoryPopup(data.data)}
-                                            disabled={data.data.id === 0}
-                                            height={24}
-                                            style={{ fontSize: 12 }}
-                                        />
-                                        <Button
-                                            text="部署最新"
-                                            icon="arrowup"
-                                            type="normal"
-                                            stylingMode="outlined"
-                                            onClick={() => handleDeployLatestBuild(data.data)}
-                                            disabled={data.data.id === 0}
-                                            height={24}
-                                            style={{ fontSize: 12 }}
-                                        />
-                                        <Button
-                                            text="配置"
-                                            icon="optionsgear"
-                                            type="normal"
-                                            stylingMode="outlined"
-                                            onClick={() => openBuildConfigPopup(data.data.id)}
-                                            disabled={data.data.id === 0}
-                                            height={24}
-                                            style={{ fontSize: 12 }}
-                                        />
-                                        <Button
-                                            text="删除"
-                                            icon="trash"
-                                            type="danger"
-                                            stylingMode="outlined"
-                                            onClick={() => handleDeleteProject(data.data)}
-                                            disabled={data.data.id === 0}
-                                            height={24}
-                                            style={{ fontSize: 12 }}
-                                        />
-                                    </div>
-                                )}
+                                cellRender={(data) => {
+                                    const project = data.data as AdminProject;
+                                    const isSystem = project.id === 0;
+
+                                    const buildActions: ActionItem[] = [
+                                        { id: 'build', text: '触发构建', icon: 'toolbox', disabled: isSystem },
+                                        { id: 'history', text: '构建记录', icon: 'event', disabled: isSystem },
+                                        { id: 'config', text: '构建配置', icon: 'optionsgear', disabled: isSystem },
+                                        { id: 'deployLatest', text: '部署最新构建', icon: 'arrowup', disabled: isSystem }
+                                    ];
+
+                                    const handleAction = (actionId: string) => {
+                                        switch (actionId) {
+                                            case 'monitor':
+                                                navigate(`/projects/${project.id}/status`);
+                                                break;
+                                            case 'edit':
+                                                handleEditClick(project);
+                                                break;
+                                            case 'build':
+                                                handleTriggerBuild(project);
+                                                break;
+                                            case 'history':
+                                                openBuildHistoryPopup(project);
+                                                break;
+                                            case 'config':
+                                                openBuildConfigPopup(project.id);
+                                                break;
+                                            case 'deployLatest':
+                                                handleDeployLatestBuild(project);
+                                                break;
+                                            case 'delete':
+                                                handleDeleteProject(project);
+                                                break;
+                                        }
+                                    };
+
+                                    return (
+                                        <div className="table-actions">
+                                            <Button
+                                                text="监控"
+                                                icon="chart"
+                                                type="normal"
+                                                stylingMode="outlined"
+                                                onClick={(e) => {
+                                                    e.event?.stopPropagation();
+                                                    handleAction('monitor');
+                                                }}
+                                                height={28}
+                                            />
+                                            <Button
+                                                text="编辑"
+                                                icon="edit"
+                                                type="default"
+                                                stylingMode="outlined"
+                                                onClick={() => handleAction('edit')}
+                                                disabled={isSystem}
+                                                height={28}
+                                            />
+                                            <ActionDropdown
+                                                items={buildActions}
+                                                onItemClick={handleAction}
+                                                dropdownIcon="setting"
+                                                disabled={isSystem}
+                                            />
+                                            <Button
+                                                icon="trash"
+                                                type="danger"
+                                                stylingMode="text"
+                                                onClick={() => handleAction('delete')}
+                                                disabled={isSystem}
+                                                height={28}
+                                                hint="删除"
+                                            />
+                                        </div>
+                                    );
+                                }}
                             />
                         </DataGrid>
                     )}
