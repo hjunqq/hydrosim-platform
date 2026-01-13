@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import DataGrid, { Column, FilterRow, Paging, SearchPanel } from 'devextreme-react/data-grid'; // Added DataGrid imports
+import DataGrid, { Column, FilterRow, Paging, SearchPanel } from 'devextreme-react/data-grid';
 import { Popup } from 'devextreme-react/popup'
 import Form, { Item as FormItem, Label, RequiredRule } from 'devextreme-react/form'
 import Button from 'devextreme-react/button'
@@ -10,22 +10,17 @@ import { confirm } from 'devextreme/ui/dialog'
 import { studentsApi, Student } from '../api/students'
 import { deploymentsApi } from '../api/deployments'
 import { buildConfigsApi } from '../api/buildConfigs'
-import { buildsApi } from '../api/builds'
+import { buildsApi, Build } from '../api/builds'
 import DeploymentStatusModal from '../components/DeploymentStatusModal'
 import BuildConfigModal from '../components/BuildConfigModal'
-import BuildHistory from '../components/BuildHistory'
-import BuildProgress from '../components/BuildProgress'
+import BuildHistoryModal from '../components/BuildHistoryModal'
+import BuildStatusModal from '../components/BuildStatusModal'
 
 const StudentsPage = () => {
     const navigate = useNavigate()
     const [searchParams] = useSearchParams()
     const [students, setStudents] = useState<Student[]>([])
-    const popupContainer = typeof document === 'undefined' ? undefined : document.body
 
-    // Filters
-    const [searchText, setSearchText] = useState('')
-    const [typeFilter, setTypeFilter] = useState<'all' | 'gd' | 'cd'>('all')
-    const [statusFilter, setStatusFilter] = useState<'all' | 'running' | 'failed' | 'deploying' | 'pending'>('all')
 
     // Modals
     const [isCreatePopupVisible, setIsCreatePopupVisible] = useState(false)
@@ -33,8 +28,10 @@ const StudentsPage = () => {
     const [isDeployStatusVisible, setIsDeployStatusVisible] = useState(false)
     const [isBuildConfigVisible, setIsBuildConfigVisible] = useState(false)
     const [selectedStudent, setSelectedStudent] = useState<Student | null>(null)
-    const [buildPopupMode, setBuildPopupMode] = useState<'history' | 'progress' | null>(null)
-    const [buildPopupStudent, setBuildPopupStudent] = useState<Student | null>(null)
+    const [isBuildHistoryVisible, setIsBuildHistoryVisible] = useState(false)
+    const [historyStudent, setHistoryStudent] = useState<Student | null>(null)
+    const [isBuildStatusVisible, setIsBuildStatusVisible] = useState(false)
+    const [buildStatusStudent, setBuildStatusStudent] = useState<Student | null>(null)
     const [buildPopupBuildId, setBuildPopupBuildId] = useState<number | null>(null)
 
     // Forms
@@ -65,10 +62,6 @@ const StudentsPage = () => {
 
     useEffect(() => {
         loadData()
-        const statusParam = searchParams.get('status')
-        if (statusParam && ['all', 'running', 'failed', 'pending'].includes(statusParam)) {
-            setStatusFilter(statusParam as any)
-        }
     }, [searchParams])
 
     // --- Actions ---
@@ -85,7 +78,7 @@ const StudentsPage = () => {
             const created = await studentsApi.create({
                 ...payload,
                 project_type: studentForm.project_type as 'gd' | 'cd'
-            })
+            }) as unknown as any
 
             if (create_build_config && studentForm.git_repo_url) {
                 try {
@@ -118,13 +111,13 @@ const StudentsPage = () => {
 
             if (trigger_build) {
                 try {
-                    const build = await buildsApi.triggerBuild(created.id)
-                    setBuildPopupStudent(created)
+                    const build = await buildsApi.triggerBuild(created.id) as unknown as Build
+                    setBuildStatusStudent(created as unknown as Student)
                     setBuildPopupBuildId(build.id)
-                    setBuildPopupMode('progress')
+                    setIsBuildStatusVisible(true)
                     notify('构建任务已提交', 'success', 2000)
                 } catch (buildErr: any) {
-                    await handleBuildError(buildErr, created)
+                    await handleBuildError(buildErr, created as unknown as Student)
                 }
             }
 
@@ -177,10 +170,13 @@ const StudentsPage = () => {
     }
 
     const openBuildHistoryPopup = (student: Student) => {
-        setBuildPopupStudent(student)
-        setBuildPopupBuildId(null)
-        setBuildPopupMode('history')
-    }
+        setIsBuildStatusVisible(false);
+        setBuildStatusStudent(null);
+        setBuildPopupBuildId(null);
+        setSelectedStudent(null); // Clear other selections
+        setHistoryStudent(student);
+        setIsBuildHistoryVisible(true);
+    };
 
     const getErrorDetail = (err: any) => {
         const detail = err?.response?.data?.detail
@@ -203,16 +199,20 @@ const StudentsPage = () => {
     }
 
     const handleTriggerBuild = async (student: Student) => {
+        setIsBuildHistoryVisible(false);
+        setSelectedStudent(null);
+        setBuildStatusStudent(student);
+        setBuildPopupBuildId(null);
         try {
-            const build = await buildsApi.triggerBuild(student.id)
-            setBuildPopupStudent(student)
-            setBuildPopupBuildId(build.id)
-            setBuildPopupMode('progress')
-            notify('构建任务已提交', 'success', 2000)
+            const build = await buildsApi.triggerBuild(student.id) as unknown as Build;
+            setBuildPopupBuildId(build.id);
+            setIsBuildStatusVisible(true);
+            notify('构建任务已提交', 'success', 2000);
         } catch (err: any) {
-            await handleBuildError(err, student)
+            await handleBuildError(err, student);
+            setIsBuildStatusVisible(false);
         }
-    }
+    };
 
     const handleDeployLatestBuild = async (student: Student) => {
         try {
@@ -228,53 +228,12 @@ const StudentsPage = () => {
         }
     }
 
-    // --- Helpers ---
-    const getStatus = (student: Student): 'running' | 'pending' | 'failed' | 'deploying' => {
-        switch (student.latest_deploy_status) {
-            case 'running':
-            case 'success':
-                return 'running'
-            case 'deploying':
-            case 'pending':
-                return 'deploying'
-            case 'failed':
-            case 'error':
-                return 'failed'
-            default:
-                return 'pending'
-        }
+    const closeBuildStatusModal = () => {
+        setIsBuildStatusVisible(false);
     }
 
-    const getStatusText = (student: Student) => {
-        const status = getStatus(student)
-        if (status === 'running') return '运行中'
-        if (status === 'deploying') return '部署中'
-        if (status === 'failed') return '异常'
-        return '待部署'
-    }
-
-    const getStatusClass = (student: Student) => {
-        const status = getStatus(student)
-        if (status === 'running') return 'st-success'
-        if (status === 'failed') return 'st-danger'
-        if (status === 'deploying') return 'st-waiting'
-        return 'st-default'
-    }
-
-    // Filter Logic
-    const filteredStudents = students.filter(s => {
-        const matchesSearch =
-            s.name.toLowerCase().includes(searchText.toLowerCase()) ||
-            s.student_code.toLowerCase().includes(searchText.toLowerCase())
-        const matchesType = typeFilter === 'all' || s.project_type === typeFilter
-        const matchesStatus = statusFilter === 'all' || getStatus(s) === statusFilter
-        return matchesSearch && matchesType && matchesStatus
-    })
-
-    const closeBuildPopup = () => {
-        setBuildPopupMode(null)
-        setBuildPopupBuildId(null)
-        setBuildPopupStudent(null)
+    const closeBuildHistoryModal = () => {
+        setIsBuildHistoryVisible(false);
     }
 
     const handleStudentFormChange = (e: any) => {
@@ -294,7 +253,7 @@ const StudentsPage = () => {
         }
     }
 
-const handleDeployFormChange = (e: any) => {
+    const handleDeployFormChange = (e: any) => {
         setDeployForm(prev => ({ ...prev, [e.dataField]: e.value }))
     }
 
@@ -468,7 +427,7 @@ const handleDeployFormChange = (e: any) => {
                                     />
                                     <Button
                                         text="构建"
-                                        icon="refresh"
+                                        icon="toolbox"
                                         type="normal"
                                         stylingMode="outlined"
                                         onClick={() => handleTriggerBuild(data.data)}
@@ -519,7 +478,7 @@ const handleDeployFormChange = (e: any) => {
             </div>
 
             {/* Create Project Modal */}
-            < Popup
+            <Popup
                 visible={isCreatePopupVisible}
                 onHiding={() => setIsCreatePopupVisible(false)}
                 title="新建学生项目"
@@ -583,10 +542,10 @@ const handleDeployFormChange = (e: any) => {
                         <Button text="创建项目" useSubmitBehavior={true} type="default" />
                     </div>
                 </form>
-            </Popup >
+            </Popup>
 
             {/* Deploy Config Modal */}
-            < Popup
+            <Popup
                 visible={isDeployConfigVisible}
                 onHiding={() => setIsDeployConfigVisible(false)}
                 title="部署项目"
@@ -631,10 +590,10 @@ const handleDeployFormChange = (e: any) => {
                         <Button text="开始部署" useSubmitBehavior={true} type="default" />
                     </div>
                 </form>
-            </Popup >
+            </Popup>
 
             {/* Deployment Status Modal */}
-            < DeploymentStatusModal
+            <DeploymentStatusModal
                 visible={isDeployStatusVisible}
                 onClose={() => setIsDeployStatusVisible(false)}
                 studentName={selectedStudent?.name}
@@ -648,46 +607,20 @@ const handleDeployFormChange = (e: any) => {
                 onSaved={loadData}
             />
 
-            <Popup
-                visible={buildPopupMode === 'history'}
-                onHiding={closeBuildPopup}
-                title={`构建记录 - ${buildPopupStudent?.name || ''}`}
-                showTitle={true}
-                dragEnabled={false}
-                shading={true}
-                showCloseButton={true}
-                container={popupContainer}
-                position="center"
-                width={900}
-                height={520}
-            >
-                {buildPopupStudent ? (
-                    <div style={{ height: '100%' }}>
-                        <BuildHistory studentId={buildPopupStudent.id} />
-                    </div>
-                ) : null}
-            </Popup>
+            <BuildHistoryModal
+                visible={isBuildHistoryVisible}
+                onClose={closeBuildHistoryModal}
+                studentId={historyStudent?.id}
+                studentName={historyStudent?.name}
+            />
 
-            <Popup
-                visible={buildPopupMode === 'progress'}
-                onHiding={closeBuildPopup}
-                title={`构建进度 - ${buildPopupStudent?.name || ''}`}
-                showTitle={true}
-                dragEnabled={false}
-                shading={true}
-                showCloseButton={true}
-                container={popupContainer}
-                position="center"
-                width={600}
-                height="auto"
-            >
-                {buildPopupStudent ? (
-                    <BuildProgress
-                        studentId={buildPopupStudent.id}
-                        buildId={buildPopupBuildId}
-                    />
-                ) : null}
-            </Popup>
+            <BuildStatusModal
+                visible={isBuildStatusVisible}
+                onClose={closeBuildStatusModal}
+                studentName={buildStatusStudent?.name}
+                studentId={buildStatusStudent?.id}
+                buildId={buildPopupBuildId}
+            />
         </>
     )
 }

@@ -4,7 +4,7 @@ import DataGrid, { Column, FilterRow, Paging, SearchPanel } from 'devextreme-rea
 import { adminProjectsApi, AdminProject } from '../api/adminProjects';
 import { studentsApi } from '../api/students'; // Added import
 import { buildConfigsApi } from '../api/buildConfigs';
-import { buildsApi } from '../api/builds';
+import { buildsApi, Build } from '../api/builds';
 import { deploymentsApi } from '../api/deployments';
 import { Popup } from 'devextreme-react/popup';
 import Form, { Item as FormItem, Label, RequiredRule } from 'devextreme-react/form';
@@ -12,14 +12,13 @@ import Button from 'devextreme-react/button';
 import notify from 'devextreme/ui/notify';
 import { confirm } from 'devextreme/ui/dialog';
 import BuildConfigModal from '../components/BuildConfigModal';
-import BuildHistory from '../components/BuildHistory';
-import BuildProgress from '../components/BuildProgress';
+import BuildHistoryModal from '../components/BuildHistoryModal';
+import BuildStatusModal from '../components/BuildStatusModal';
 
 const AdminProjectsPage = () => {
     const navigate = useNavigate();
     const [projects, setProjects] = useState<AdminProject[]>([]);
     const [loading, setLoading] = useState(true);
-    const popupContainer = typeof document === 'undefined' ? undefined : document.body;
 
     useEffect(() => {
         loadProjects();
@@ -41,9 +40,9 @@ const AdminProjectsPage = () => {
     const [isPopupVisible, setIsPopupVisible] = useState(false);
     const [isBuildConfigVisible, setIsBuildConfigVisible] = useState(false);
     const [isBuildHistoryVisible, setIsBuildHistoryVisible] = useState(false);
-    const [isBuildHistoryReady, setIsBuildHistoryReady] = useState(false);
-    const [selectedStudentId, setSelectedStudentId] = useState<number | null>(null);
-    const [isBuildProgressVisible, setIsBuildProgressVisible] = useState(false);
+    const [historyStudent, setHistoryStudent] = useState<AdminProject | null>(null);
+    const [selectedStudent, setSelectedStudent] = useState<AdminProject | null>(null);
+    const [isBuildStatusVisible, setIsBuildStatusVisible] = useState(false);
     const [buildProgressStudent, setBuildProgressStudent] = useState<AdminProject | null>(null);
     const [buildProgressBuildId, setBuildProgressBuildId] = useState<number | null>(null);
 
@@ -72,7 +71,7 @@ const AdminProjectsPage = () => {
             const created = await studentsApi.create({
                 ...payload,
                 project_type: newProject.project_type as 'gd' | 'cd'
-            });
+            }) as unknown as any;
 
             if (create_build_config && newProject.git_repo_url) {
                 try {
@@ -105,13 +104,13 @@ const AdminProjectsPage = () => {
 
             if (trigger_build) {
                 try {
-                    const build = await buildsApi.triggerBuild(created.id);
-                    setBuildProgressStudent(created as AdminProject);
+                    const build = await buildsApi.triggerBuild(created.id) as unknown as Build;
+                    setBuildProgressStudent(created as unknown as AdminProject);
                     setBuildProgressBuildId(build.id);
-                    setIsBuildProgressVisible(true);
+                    setIsBuildStatusVisible(true);
                     notify('构建任务已提交', 'success', 2000);
                 } catch (buildErr: any) {
-                    await handleBuildError(buildErr, created as AdminProject);
+                    await handleBuildError(buildErr, created as unknown as AdminProject);
                 }
             }
 
@@ -149,16 +148,16 @@ const AdminProjectsPage = () => {
     };
 
     const openBuildConfigPopup = (studentId: number) => {
-        setSelectedStudentId(studentId);
+        setSelectedStudent(projects.find(p => p.id === studentId) || null);
         setIsBuildConfigVisible(true);
     };
 
-    const openBuildHistoryPopup = (studentId: number) => {
-        setIsBuildProgressVisible(false);
+    const openBuildHistoryPopup = (project: AdminProject) => {
+        setIsBuildStatusVisible(false);
         setBuildProgressBuildId(null);
         setBuildProgressStudent(null);
-        setSelectedStudentId(studentId);
-        setIsBuildHistoryReady(false);
+        setSelectedStudent(null);
+        setHistoryStudent(project);
         setIsBuildHistoryVisible(true);
     };
 
@@ -184,19 +183,27 @@ const AdminProjectsPage = () => {
 
     const handleTriggerBuild = async (project: AdminProject) => {
         setIsBuildHistoryVisible(false);
-        setIsBuildHistoryReady(false);
+        setSelectedStudent(null);
         setBuildProgressStudent(project);
         setBuildProgressBuildId(null);
-        setIsBuildProgressVisible(true);
         try {
-            const build = await buildsApi.triggerBuild(project.id);
+            const build = await buildsApi.triggerBuild(project.id) as unknown as Build;
             setBuildProgressBuildId(build.id);
+            setIsBuildStatusVisible(true);
             notify('构建任务已提交', 'success', 2000);
         } catch (err: any) {
             await handleBuildError(err, project);
-            setIsBuildProgressVisible(false);
+            setIsBuildStatusVisible(false);
         }
     };
+
+    const closeBuildStatusModal = () => {
+        setIsBuildStatusVisible(false);
+    }
+
+    const closeBuildHistoryModal = () => {
+        setIsBuildHistoryVisible(false);
+    }
 
     const handleDeployLatestBuild = async (project: AdminProject) => {
         try {
@@ -442,7 +449,7 @@ const AdminProjectsPage = () => {
                                         />
                                         <Button
                                             text="构建"
-                                            icon="refresh"
+                                            icon="toolbox"
                                             type="normal"
                                             stylingMode="outlined"
                                             onClick={() => handleTriggerBuild(data.data)}
@@ -455,7 +462,7 @@ const AdminProjectsPage = () => {
                                             icon="event"
                                             type="normal"
                                             stylingMode="outlined"
-                                            onClick={() => openBuildHistoryPopup(data.data.id)}
+                                            onClick={() => openBuildHistoryPopup(data.data)}
                                             disabled={data.data.id === 0}
                                             height={24}
                                             style={{ fontSize: 12 }}
@@ -492,7 +499,7 @@ const AdminProjectsPage = () => {
                                         />
                                     </div>
                                 )}
-                                />
+                            />
                         </DataGrid>
                     )}
                 </div>
@@ -516,7 +523,7 @@ const AdminProjectsPage = () => {
                                 <Label text="Git 仓库地址" />
                                 <RequiredRule message="Git地址不能为空" />
                             </FormItem>
-                            
+
                             <FormItem itemType="group" caption="构建与部署">
                                 <FormItem
                                     dataField="create_build_config"
@@ -542,7 +549,7 @@ const AdminProjectsPage = () => {
                     </form>
                 </Popup>
 
-                                                <Popup
+                <Popup
                     visible={isCreatePopupVisible}
                     onHiding={() => setIsCreatePopupVisible(false)}
                     title="新建项目"
@@ -609,59 +616,28 @@ const AdminProjectsPage = () => {
 
                 <BuildConfigModal
                     visible={isBuildConfigVisible}
-                    onClose={() => setIsBuildConfigVisible(false)}
-                    studentId={selectedStudentId || 0}
+                    onClose={() => {
+                        setIsBuildConfigVisible(false);
+                        setSelectedStudent(null);
+                    }}
+                    studentId={selectedStudent?.id || 0}
                     onSaved={loadProjects}
                 />
 
-                <Popup
+                <BuildHistoryModal
                     visible={isBuildHistoryVisible}
-                    onHiding={() => {
-                        setIsBuildHistoryVisible(false);
-                        setIsBuildHistoryReady(false);
-                    }}
-                    onShown={() => setIsBuildHistoryReady(true)}
-                    title="构建记录"
-                    showTitle={true}
-                    dragEnabled={false}
-                    shading={true}
-                    showCloseButton={true}
-                    container={popupContainer}
-                    position="center"
-                    width={900}
-                    height={520}
-                >
-                    {isBuildHistoryReady && selectedStudentId ? (
-                        <div style={{ height: '100%' }}>
-                            <BuildHistory studentId={selectedStudentId} />
-                        </div>
-                    ) : null}
-                </Popup>
+                    onClose={closeBuildHistoryModal}
+                    studentId={historyStudent?.id}
+                    studentName={historyStudent?.name}
+                />
 
-                <Popup
-                    visible={isBuildProgressVisible}
-                    onHiding={() => {
-                        setIsBuildProgressVisible(false);
-                        setBuildProgressBuildId(null);
-                        setBuildProgressStudent(null);
-                    }}
-                    title={`构建进度 - ${buildProgressStudent?.name || ''}`}
-                    showTitle={true}
-                    dragEnabled={false}
-                    shading={true}
-                    showCloseButton={true}
-                    container={popupContainer}
-                    position="center"
-                    width={600}
-                    height="auto"
-                >
-                    {buildProgressStudent ? (
-                        <BuildProgress
-                            studentId={buildProgressStudent.id}
-                            buildId={buildProgressBuildId}
-                        />
-                    ) : null}
-                </Popup>
+                <BuildStatusModal
+                    visible={isBuildStatusVisible}
+                    onClose={closeBuildStatusModal}
+                    studentName={buildProgressStudent?.name}
+                    studentId={buildProgressStudent?.id}
+                    buildId={buildProgressBuildId}
+                />
             </div>
         </>
     );
